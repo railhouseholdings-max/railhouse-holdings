@@ -1,0 +1,36 @@
+node_modules/
+.next/
+out/
+.env*
+!.env.example
+*.tsbuildinfo
+.DS_Store
+coverage/
+# Keep private investment workbooks out of version control.
+*.xlsx
+*.xls
+~$*
+
+# Hosting/CLI/generated/editor state
+.vercel/
+supabase/.temp/
+supabase/.branches/
+next-env.d.ts
+.vscode/
+.idea/
+*.log
+*.pem
+*.key
+*.p12
+# Local imports, private documents, databases and backups are never runtime storage.
+*.pdf
+*.csv
+*.tsv
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.bak
+*.dump
+backups/
+imports/

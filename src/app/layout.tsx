@@ -1,0 +1,9 @@
+import type { Metadata, Viewport } from "next";
+import Link from "next/link";
+import { Navigation } from "@/components/navigation";
+import "./globals.css";
+import { dataMode } from "@/lib/config/cloud";
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: { default: "Railhouse Holdings", template: "%s | Railhouse Holdings" }, description: "The property operating workspace for Railhouse Holdings LLC.", appleWebApp: { capable: true, statusBarStyle: "default", title: "Railhouse" }, icons: { icon: "/icon.svg" } };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#173e33" };
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { const privateMode = dataMode() === "supabase"; return <html lang="en"><body><a className="skip-link" href="#main">Skip to content</a><aside className="sidebar"><Link href="/" className="brand" aria-label="Railhouse Holdings home"><span className="brand-mark">R<span>H</span></span><span>RAILHOUSE<small>HOLDINGS LLC</small></span></Link><div className="nav-label">YOUR WORKSPACE</div><Navigation /><div className="sidebar-footer"><span className="workspace-dot" />Personal workspace<small>Build. Hold. Grow.</small></div></aside><div className="app-content"><div className="topbar"><span>Real estate operating system</span><span className="demo-label"><span />{privateMode ? "Private cloud workspace" : "Demo workspace"}</span>{privateMode && <form action="/api/auth/logout" method="post"><button className="text-link" type="submit">Sign out</button></form>}</div><main id="main">{children}<footer className="page-footer">Railhouse Holdings LLC <span>{privateMode ? "Private data · Use Save deal to persist an analysis" : "Illustrative data · No changes are saved"}</span></footer></main></div></body></html>; }
