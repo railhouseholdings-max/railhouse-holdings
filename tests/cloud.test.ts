@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cloudConfig, dataMode } from '../src/lib/config/cloud.ts';
-import { cloudHeaders, isSameOriginWrite, passwordSignIn, verifyOwner, restRequest } from '../src/lib/cloud/http.ts';
+import { cloudHeaders, isSameOriginWrite, passwordSignIn, verifyOwner, restRequest, SignInError } from '../src/lib/cloud/http.ts';
 import { validateSaveDeal, toDealRows, fromDealRow } from '../src/lib/persistence/deal-records.ts';
 import { spreadsheetExample } from '../src/lib/data/spreadsheet-example.ts';
 import { DEFAULT_CLOSING_ADJUSTMENTS } from '../src/lib/calculations/closing.ts';
@@ -44,7 +44,7 @@ test('only a remotely verified configured owner is authorized',async()=>{
 test('password sign-in bounds session duration and never returns a refresh token',async()=>{
   const session=await passwordSignIn(config,'owner@example.test','test-password',async()=>response({user:{id:owner},access_token:'access',refresh_token:'not-retained',expires_in:7200}));
   assert.deepEqual(session,{accessToken:'access',expiresIn:3600});
-  assert.equal(await passwordSignIn(config,'other@example.test','x',async()=>response({user:{id:other},access_token:'other',expires_in:3600})),null);
+  await assert.rejects(()=>passwordSignIn(config,'other@example.test','x',async()=>response({user:{id:other},access_token:'other',expires_in:3600})),e=>e instanceof SignInError&&e.code==='owner');
   assert.equal(await passwordSignIn(config,'owner@example.test','x',async()=>response({},400)),null);
 });
 test('database calls carry the owner JWT, respect RLS, disable caching and hide upstream errors',async()=>{
@@ -82,4 +82,13 @@ test('malformed saves and incomplete stored rows fail rather than inventing fina
   assert.throws(()=>validateSaveDeal({...request,inputs:{...request.inputs,closingDate:'2026-02-30'}}));
   const rows=toDealRows(validateSaveDeal(request),evidence);
   assert.throws(()=>fromDealRow({...rows.deal,deal_adjustments:null,deal_tax_assumptions:rows.taxes}));
+});
+
+test('sign-in errors distinguish safe actionable categories without exposing upstream data',async()=>{
+  const cases=[['email_not_confirmed',400,'confirmation'],['email_provider_disabled',400,'provider'],['invalid_api_key',401,'key'],['over_request_rate_limit',429,'rate-limit'],['unexpected_failure',500,'unavailable']] as const;
+  for(const [code,status,expected] of cases) {
+    await assert.rejects(()=>passwordSignIn(config,'owner@example.test','never-expose-password',async()=>response({error_code:code,msg:'never-expose-upstream-body'},status)), e=>e instanceof SignInError&&e.code===expected&&!e.message.includes('never-expose'));
+  }
+  assert.equal(await passwordSignIn(config,'owner@example.test','x',async()=>response({error_code:'invalid_credentials'},400)),null);
+  await assert.rejects(()=>passwordSignIn(config,'owner@example.test','x',async()=>response({user:{id:owner},access_token:'x',expires_in:0})),e=>e instanceof SignInError&&e.code==='unavailable');
 });

@@ -18,11 +18,29 @@ export async function verifyOwner(config: CloudConfig, token: string | undefined
   const user = await response.json() as {id?:string};
   return user.id === config.ownerId ? {accessToken:token,userId:user.id} : null;
 }
+export type SignInFailure = 'owner' | 'confirmation' | 'provider' | 'key' | 'rate-limit' | 'unavailable';
+export class SignInError extends Error {
+  readonly code: SignInFailure;
+  constructor(code: SignInFailure) {super(`Sign-in failed: ${code}`);this.name='SignInError';this.code=code;}
+}
 export async function passwordSignIn(config: CloudConfig, email: string, password: string, fetcher: Fetcher = fetch) {
   const response = await fetcher(`${config.url}/auth/v1/token?grant_type=password`,{method:'POST',headers:cloudHeaders(config),cache:'no-store',signal:AbortSignal.timeout(15000),body:JSON.stringify({email,password})});
-  if (!response.ok) return null;
+  if (!response.ok) {
+    // Only allowlisted codes leave this layer. Never forward upstream messages,
+    // submitted credentials, API keys, user IDs or response bodies to the UI/logs.
+    let code: unknown;
+    try {const body=await response.json() as {error_code?:unknown;code?:unknown};code=body.error_code??body.code;} catch { /* classify using HTTP status */ }
+    if (code==='invalid_credentials' || code==='invalid_grant') return null;
+    if (code==='email_not_confirmed') throw new SignInError('confirmation');
+    if (code==='email_provider_disabled' || code==='email_password_sign_in_disabled') throw new SignInError('provider');
+    if (response.status===429 || code==='over_request_rate_limit') throw new SignInError('rate-limit');
+    if (response.status===401 || code==='invalid_api_key') throw new SignInError('key');
+    if (response.status>=500) throw new SignInError('unavailable');
+    return null;
+  }
   const session = await response.json() as {access_token?:string;expires_in?:number;user?:{id?:string}};
-  if (session.user?.id !== config.ownerId || !session.access_token || !Number.isFinite(session.expires_in) || session.expires_in! <= 0) return null;
+  if (!session.user?.id || !session.access_token || !Number.isFinite(session.expires_in) || session.expires_in! <= 0) throw new SignInError('unavailable');
+  if (session.user.id.toLowerCase() !== config.ownerId) throw new SignInError('owner');
   // Intentionally no refresh-token storage or custom JWT verification. Re-login on expiry.
   return {accessToken:session.access_token,expiresIn:Math.min(session.expires_in!,3600)};
 }

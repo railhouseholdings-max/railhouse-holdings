@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cloudConfig, dataMode } from '@/lib/config/cloud';
-import { isSameOriginWrite, passwordSignIn } from '@/lib/cloud/http';
+import { isSameOriginWrite, passwordSignIn, SignInError } from '@/lib/cloud/http';
 import { SESSION_COOKIE } from '@/lib/cloud/session';
 export async function POST(request: Request) {
   if (dataMode() !== 'supabase') return Response.json({error:'Private mode is disabled.'},{status:404});
@@ -12,7 +12,10 @@ export async function POST(request: Request) {
     const form = await request.formData(), email = String(form.get('email') ?? '').trim(), password = String(form.get('password') ?? '');
     if (!email || email.length > 320 || !password || password.length > 1024) throw new Error('Invalid credentials');
     session = await passwordSignIn(config,email,password);
-  } catch { return new NextResponse(null,{status:303,headers:{Location:'/login?error=unavailable','Cache-Control':'no-store'}}); }
+  } catch (error) {
+    const code=error instanceof SignInError ? error.code : 'unavailable';
+    return new NextResponse(null,{status:303,headers:{Location:`/login?error=${code}`,'Cache-Control':'no-store'}});
+  }
   if (!session) return new NextResponse(null,{status:303,headers:{Location:'/login?error=credentials','Cache-Control':'no-store'}});
   const response = new NextResponse(null,{status:303,headers:{Location:'/','Cache-Control':'no-store'}});
   response.cookies.set(SESSION_COOKIE,session.accessToken,{httpOnly:true,secure:new URL(config.origin).protocol === 'https:',sameSite:'lax',path:'/',maxAge:session.expiresIn});
