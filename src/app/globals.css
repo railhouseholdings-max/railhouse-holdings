@@ -90,3 +90,7 @@
 .results-heading,#primary-estimates-heading{scroll-margin-top:24px}
 .edit-deal-inputs{display:none}
 @media(max-width:1190px){.calculator-layout.has-results>.results-column{order:-1}.has-results .edit-deal-inputs{display:inline-flex;min-height:44px;align-items:center;margin-bottom:12px}}
+
+.address-dropdown li{padding:0}
+.address-dropdown li>button{display:block;width:100%;min-height:60px;padding:12px;border:0;border-radius:4px;background:transparent;color:inherit;text-align:left;touch-action:pan-y}
+.address-dropdown li>button:hover{background:#edf3e6}

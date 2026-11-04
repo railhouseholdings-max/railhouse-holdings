@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import type { SaveDealRequest } from "@/domain/saved-deal";
 import type { DealAnalysis, DealInputs } from "@/domain/models";
 import { calculateDeal } from "@/lib/calculations/deal";
-import { spreadsheetExample } from "@/lib/data/spreadsheet-example";
 import { money, percent } from "@/lib/format";
 import { DetailRows } from "./ui";
 import { DealStrength } from "./deal-strength";
@@ -105,7 +104,6 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
   // explicitly selected tax year and manual override until the user clears them.
   const changeAddress = (next: string) => {setAddress(next); setShowResults(false);};
   const [showResults, setShowResults] = useState(Boolean(initialDeal));
-  const [isExample, setIsExample] = useState(false);
   const [isEdited, setIsEdited] = useState(false);
   const [closingAdjustments, setClosingAdjustments] = useState<ClosingAdjustments>(() => ({ ...(initialDeal?.closingAdjustments ?? DEFAULT_CLOSING_ADJUSTMENTS) }));
   const [referenceLoaded, setReferenceLoaded] = useState(false);
@@ -176,16 +174,8 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
   return <>
     <div className="analysis-intro">
       <div><strong>Start with your four estimates.</strong><p>Enter the project numbers, then review the costs estimated below. Add the property address for tax lookup. {cloudEnabled ? "Calculate, then Save deal to keep the analysis. Unsaved edits stay in this tab only." : "Inputs are not saved in demo mode."}</p></div>
-      <button type="button" className="button secondary" onClick={() => {
-        resetEstimates(); taxModel.setOverride(String(spreadsheetExample.annualPropertyTaxes)); automaticContingency.current = false;
-        setFields(initialDealFields(asOfDate, spreadsheetExample)); setAddress("");
-        setClosingAdjustments({ ...DEFAULT_CLOSING_ADJUSTMENTS }); setReferenceLoaded(false);
-        setPurchaseAdjustments({ ...DEFAULT_PURCHASE_ADJUSTMENTS }); setPurchaseReferenceLoaded(false);
-        setIsExample(true); setIsEdited(false); setShowResults(true);
-      }}>Load spreadsheet example</button>
     </div>
     {taxModel.warning && <p className="notice tax-warning" role="alert">{taxModel.warning}</p>}
-    {isExample && <p className="notice">{isEdited ? "Editing the spreadsheet example." : "Spreadsheet example loaded."} Uses the spreadsheet’s project and rental inputs with the new closing-document fee baseline. Closing totals now include itemized lender/title fees, prepaid premiums, and escrow.</p>}
     {referenceLoaded && <p className="notice">{isEdited ? "Editing the closing-document reference. Calculated amounts reflect your current inputs. " : ""}Closing-document loan terms loaded: $113,250 loan, 6.25%, 30 years, funding June 8, 2026. Project costs and rent are still your inputs. The source closing reported $105,833.63 cash to borrower. This analysis uses the selected county rental estimate or manual override; closing totals may differ from the historical reference.</p>}
     {purchaseReferenceLoaded && <p className="notice">Purchase statement reference loaded: December 19, 2025 · $80,000 purchase, $50,000 estimated rehab, and $314 purchase closing fees. Source total: $130,314. Current results use any edits you make; other assumptions remain your inputs.</p>}
     <div className={`calculator-layout${showResults ? " has-results" : ""}`}>
@@ -197,7 +187,7 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
           {renderFields([...projectFields.filter(field => ["purchasePrice", "rehabBudget", "arv"].includes(field.key)),operatingFields[0]])}
           <PropertyTaxFields model={taxModel} projectedRent={fields.monthlyRent} />
         <div className="form-actions primary-actions"><button type="submit" className="button">Calculate deal <span aria-hidden="true">→</span></button><button type="button" className="button secondary" onClick={() => {
-          resetEstimates(); setFields(initialDealFields(asOfDate)); setAddress(""); setIsExample(false); setIsEdited(false); setShowResults(false); setClosingAdjustments({ ...DEFAULT_CLOSING_ADJUSTMENTS }); setReferenceLoaded(false);
+          resetEstimates(); setFields(initialDealFields(asOfDate)); setAddress(""); setIsEdited(false); setShowResults(false); setClosingAdjustments({ ...DEFAULT_CLOSING_ADJUSTMENTS }); setReferenceLoaded(false);
         setPurchaseAdjustments({ ...DEFAULT_PURCHASE_ADJUSTMENTS }); setPurchaseReferenceLoaded(false);
         }}>Clear inputs</button></div>
           <p className="note">Calculations use the county rental estimate or your annual-tax override. Current county taxes are historical reference only.</p>
@@ -218,7 +208,7 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
               setFields(previous => ({ ...previous, purchasePrice: String(PURCHASE_STATEMENT_REFERENCE.purchasePrice), rehabBudget: String(PURCHASE_STATEMENT_REFERENCE.rehabBudget), unexpectedConstructionCosts: "2000", annualPropertyTaxes: "" }));
               setPurchaseAdjustments({ ...DEFAULT_PURCHASE_ADJUSTMENTS });
               setAddress("2221 Eby Avenue, Fort Wayne, IN 46802");
-              setPurchaseReferenceLoaded(true); setIsExample(false); setShowResults(false);
+              setPurchaseReferenceLoaded(true); setShowResults(false);
             }} />
           {purchaseError && <p role="alert" className="error">{purchaseError}</p>}
         </section>
@@ -236,7 +226,7 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
             resetEstimates();
             setFields(previous => ({ ...previous, arv: "151000", refinanceLtv: "75", interestRate: "6.25", loanTermYears: "30", closingDate: "2026-06-08", annualPropertyTaxes: "2410.08", annualInsurance: "970" }));
             setClosingAdjustments({ ...DEFAULT_CLOSING_ADJUSTMENTS, annualFloodInsurance: 905, aggregateEscrowAdjustment: -604.99, brokerCredit: 339.75, quotedTitlePremium: 195 });
-            setAddress("2221 Eby Avenue, Fort Wayne, IN 46802"); setReferenceLoaded(true); setIsExample(false); setIsEdited(false); setShowResults(false);
+            setAddress("2221 Eby Avenue, Fort Wayne, IN 46802"); setReferenceLoaded(true); setIsEdited(false); setShowResults(false);
           }}>Use actual closing loan terms →</button>
           <ClosingCostEstimate estimate={closingPreview} />
           {closingPreviewError && <p role="alert" className="error">{closingPreviewError}</p>}
@@ -259,7 +249,7 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
       <aside className="results-column">
         <section className="panel results" aria-live="polite" aria-atomic="true">
           <p className="eyebrow">YOUR DEAL AT A GLANCE</p><h2 ref={resultsHeading} tabIndex={-1} className="results-heading">{result ? "Does the deal work?" : "A clear picture, before you buy."}</h2>
-          <p className="muted result-description">{result ? address || (isExample ? "Spreadsheet reference scenario" : "Your analysis") : "Enter the four project numbers, then calculate to see cash flow and capital recovery."}</p>
+          <p className="muted result-description">{result ? address || "Your analysis" : "Enter the four project numbers, then calculate to see cash flow and capital recovery."}</p>
           {showResults && <button type="button" className="text-link edit-deal-inputs" onClick={() => {
             inputsHeading.current?.focus({ preventScroll: true });
             inputsHeading.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });

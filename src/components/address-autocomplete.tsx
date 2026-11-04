@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { AddressSuggestion } from "@/domain/address";
 
 const MIN_QUERY_LENGTH = 4;
@@ -8,11 +8,26 @@ type SearchState = { query: string; status: "loading" | "ready" | "error"; sugge
 
 export function AddressAutocomplete({ value, onChange, onCommit }: { value: string; onChange: (address: string) => void; onCommit?: (address: string) => void }) {
   const id = useId();
+  const container = useRef<HTMLDivElement>(null);
+  const interactingWithSuggestions = useRef(false);
   const listId = `${id}-suggestions`;
   const [focused, setFocused] = useState(false);
   const [dismissedValue, setDismissedValue] = useState<string | null>(value);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [search, setSearch] = useState<SearchState | null>(null);
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      interactingWithSuggestions.current = Boolean(container.current?.querySelector('.address-dropdown')?.contains(target));
+      if (!container.current?.contains(target)) {
+        setFocused(false);
+        setActiveIndex(-1);
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    return () => document.removeEventListener('pointerdown', handlePointerDown, true);
+  }, []);
   const query = value.trim();
   const enabled = focused && query.length >= MIN_QUERY_LENGTH && dismissedValue !== value;
   const current = search?.query === query ? search : null;
@@ -50,14 +65,18 @@ export function AddressAutocomplete({ value, onChange, onCommit }: { value: stri
     : suggestions.length === 0 ? "No matching addresses. Add a city or ZIP, or enter the address manually."
     : `${suggestions.length} suggestions available. Use the arrow keys and Enter to choose.`;
 
-  return <div className="field full address-field address-autocomplete">
+  return <div ref={container} className="field full address-field address-autocomplete" onBlur={event => {
+    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+    if (!event.relatedTarget && interactingWithSuggestions.current) return;
+    setFocused(false); setActiveIndex(-1); onCommit?.(value);
+  }}>
     <label htmlFor={id}>Property address <small>(for tax lookup)</small></label>
     <input id={id} value={value} role="combobox" aria-autocomplete="list"
       aria-expanded={expanded && suggestions.length > 0} aria-controls={expanded && suggestions.length > 0 ? listId : undefined}
       aria-activedescendant={expanded && activeIndex >= 0 && suggestions[activeIndex] ? `${id}-option-${activeIndex}` : undefined}
       aria-describedby={`${id}-hint`} autoComplete="off" spellCheck={false} maxLength={240}
       placeholder="Start typing a street address…"
-      onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); setActiveIndex(-1); onCommit?.(value); }}
+      onFocus={() => setFocused(true)}
       onChange={event => { setDismissedValue(null); setActiveIndex(-1); onChange(event.target.value); }}
       onKeyDown={event => {
         if (event.key === "Escape") { event.preventDefault(); setDismissedValue(value); setActiveIndex(-1); }
@@ -77,8 +96,10 @@ export function AddressAutocomplete({ value, onChange, onCommit }: { value: stri
       {suggestions.length > 0 ? <ul id={listId} role="listbox" aria-label="Suggested property addresses">
         {suggestions.map((suggestion, index) => <li id={`${id}-option-${index}`} key={suggestion.id}
           role="option" aria-selected={index === activeIndex} className={index === activeIndex ? "highlighted" : ""}
-          onPointerDown={event => event.preventDefault()} onClick={() => select(suggestion)}>
+          onPointerDown={event => { if (event.pointerType === "mouse") event.preventDefault(); }}>
+          <button type="button" tabIndex={-1} onClick={() => select(suggestion)}>
           <strong>{suggestion.street}</strong><span>{[suggestion.city, suggestion.state, suggestion.postalCode].filter(Boolean).join(", ")}</span>
+          </button>
         </li>)}
       </ul> : <p className="address-message">{status}</p>}
       <div className="address-attribution">Search by <a href="https://photon.komoot.io/" target="_blank" rel="noreferrer">Photon</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a></div>
