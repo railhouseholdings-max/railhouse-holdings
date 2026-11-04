@@ -109,22 +109,50 @@
 .address-dropdown li>button{display:block;width:100%;min-height:60px;padding:12px;border:0;border-radius:4px;background:transparent;color:inherit;text-align:left;touch-action:pan-y}
 .address-dropdown li>button:hover{background:#edf3e6}
 
-.purchase-price-explorer{margin-top:24px;padding:24px;border:1px solid #c9d8bf;border-radius:10px;background:#f4f7ef}
-.price-explorer-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.deal-metrics-workspace{display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:start}
+.purchase-price-explorer{min-width:0;padding:18px 14px;border:1px solid #c9d8bf;border-radius:10px;background:#f4f7ef}
+.price-explorer-heading{margin-bottom:14px}
 .price-explorer-heading .eyebrow{margin-bottom:8px}
-.price-explorer-heading h3{font-size:19px}
-.price-live-label{font-size:10px;color:#3e6a43;background:#e4eddc;padding:6px 9px;border-radius:20px;white-space:nowrap}
-.explorer-price-field{max-width:250px}
-.purchase-price-track{position:relative;margin-top:14px}
-.purchase-price-slider{display:block;width:100%;height:44px;margin:0;padding:0;appearance:none;-webkit-appearance:none;background:transparent;cursor:ew-resize;touch-action:pan-y}
-.purchase-price-slider::-webkit-slider-runnable-track{height:8px;border-radius:8px;background:linear-gradient(to right,var(--green) var(--price-progress),#d6dfcf var(--price-progress))}
-.purchase-price-slider::-moz-range-track{height:8px;border-radius:8px;background:linear-gradient(to right,var(--green) var(--price-progress),#d6dfcf var(--price-progress))}
-.purchase-price-slider::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:28px;height:28px;margin-top:-10px;background:var(--green);border:4px solid white;border-radius:50%;box-shadow:0 1px 6px #173e3340}
+.price-explorer-heading h3{font-size:17px}
+.explorer-price-field{min-width:0}
+.explorer-price-field>span{min-height:0}
+.vertical-price-control{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:14px}
+.price-range-label{font-size:10px;color:var(--muted)}
+.purchase-price-track{position:relative;width:44px;height:230px}
+.purchase-price-slider{display:block;writing-mode:vertical-lr;direction:rtl;width:44px;height:100%;margin:0;padding:0;appearance:none;-webkit-appearance:none;background:transparent;cursor:ns-resize;touch-action:none}
+.purchase-price-slider::-webkit-slider-runnable-track{width:8px;height:100%;border-radius:8px;background:linear-gradient(to top,var(--green) var(--price-progress),#d6dfcf var(--price-progress))}
+.purchase-price-slider::-moz-range-track{width:8px;height:100%;border-radius:8px;background:linear-gradient(to top,var(--green) var(--price-progress),#d6dfcf var(--price-progress))}
+.purchase-price-slider::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:28px;height:28px;margin-left:-10px;background:var(--green);border:4px solid white;border-radius:50%;box-shadow:0 1px 6px #173e3340}
 .purchase-price-slider::-moz-range-thumb{width:20px;height:20px;background:var(--green);border:4px solid white;border-radius:50%;box-shadow:0 1px 6px #173e3340}
-.purchase-price-target-mark{position:absolute;top:11px;width:3px;height:22px;border-radius:2px;background:#a37b29;pointer-events:none;transform:translateX(-50%)}
-.price-range-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted)}
-.purchase-price-target{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #d3deca;padding-top:18px;margin:20px 0 14px}
+.purchase-price-target-mark{position:absolute;left:7px;width:30px;height:3px;border-radius:2px;background:#a37b29;pointer-events:none;transform:translateY(50%)}
+.purchase-price-target{border-top:1px solid #d3deca;padding-top:12px;margin-top:14px}
 .purchase-price-target span{display:block;font-size:11px;color:#5b6d50}
-.purchase-price-target strong{display:block;font-size:25px;letter-spacing:-.5px;margin:7px 0}
-.purchase-price-target small{display:block;color:var(--muted);line-height:1.6}
-@media(max-width:767px){.purchase-price-explorer{padding:18px 14px}.price-explorer-heading h3{font-size:16px}.purchase-price-target{align-items:flex-start;flex-direction:column}.purchase-price-target .button{width:100%}.explorer-price-field{max-width:none}}
+.purchase-price-target strong{display:block;font-size:23px;letter-spacing:-.5px;margin:7px 0;overflow-wrap:anywhere}
+.purchase-price-target small{display:block;color:var(--muted);line-height:1.6;font-size:10px}
+.purchase-price-target .button{width:100%;margin-top:10px}
+.price-explorer-help{margin-top:12px}
+.price-explorer-help summary{min-height:36px;font-size:10px;cursor:pointer;padding:10px 0;color:var(--muted)}
+@media(max-width:767px){
+.deal-metrics-workspace{grid-template-columns:110px minmax(0,1fr);gap:12px}
+.purchase-price-explorer{padding:12px 8px}
+.price-explorer-heading h3{font-size:13px}
+.price-explorer-heading .eyebrow{font-size:8px;letter-spacing:1px}
+.explorer-price-field>span{font-size:10px}
+.explorer-price-field input{padding:10px 18px 10px 6px;min-width:0;width:100%;height:44px}
+.explorer-price-field .input-wrap>span{right:7px;top:14px}
+.purchase-price-track{height:170px}
+.purchase-price-target span{font-size:10px}
+.purchase-price-target strong{font-size:18px;letter-spacing:-.6px}
+.purchase-price-target .button{padding:10px 6px;font-size:10px;min-height:44px}
+.deal-metrics-workspace .strength-rating{display:block;padding:12px 9px}
+.deal-metrics-workspace .strength-rating>div{max-width:none}
+.deal-metrics-workspace .strength-rating .eyebrow{font-size:8px;letter-spacing:1px;margin-bottom:5px}
+.deal-metrics-workspace .strength-rating strong{font-size:22px}
+.deal-metrics-workspace .strength-rating>p{font-size:9px;margin-top:8px}
+.deal-metrics-workspace .strength-gauges{grid-template-columns:minmax(0,1fr);gap:0;margin-top:8px}
+.deal-metrics-workspace .strength-gauge{display:grid;grid-template-columns:minmax(50px,.85fr) minmax(0,1fr);gap:8px;text-align:left;padding:12px 0;border-bottom:1px solid var(--line)}
+.deal-metrics-workspace .strength-gauge h3{font-size:10px;margin:0 0 4px}
+.deal-metrics-workspace .strength-gauge-copy>strong{font-size:clamp(12px,8cqi,18px)}
+.deal-metrics-workspace .gauge-status{font-size:9px;margin-top:3px}
+.deal-metrics-workspace .strength-gauge small{font-size:8px;margin-top:3px}
+}

@@ -27,7 +27,7 @@ Supporting metrics do not affect the rating:
 
 ## Purchase-price explorer
 
-After calculation, a slider and numeric price field share the primary purchase-price state. Changes recalculate the dials and breakdowns immediately. The gold tick and “Use target” button identify the highest whole-dollar purchase price meeting the Good thresholds, holding other inputs fixed.
+After calculation, a vertical slider on the left and a numeric price field share the primary purchase-price state. The deal dials sit alongside the slider, with compact rows on mobile. Slide up to increase price and down to lower it. Changes recalculate the dials and breakdowns immediately. The gold tick and “Use target” button identify the highest whole-dollar purchase price meeting the Good thresholds, holding other inputs fixed.
 
 The target limits total project cost to the lesser of ARV and net whole-project refinance recovery / 0.85, then subtracts all non-purchase project costs (including net purchase fees). Negative monthly cash flow, nonpositive recovery, or infeasible fixed costs produce “No price-only solution.” The target is rounded down to a whole dollar. It uses the current modeled fees and assumptions, not a market valuation.
 

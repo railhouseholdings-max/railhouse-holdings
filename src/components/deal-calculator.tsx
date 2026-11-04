@@ -187,10 +187,10 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
           <p className="eyebrow">01 · DEAL METRICS</p><h2 id="deal-metrics-heading" ref={resultsHeading} tabIndex={-1} className="results-heading">{result ? "Deal metrics & rating" : "A clear picture, before you buy."}</h2>
           <p className="muted result-description">{result ? address || "Your analysis" : "Enter the four project numbers, then calculate to see cash flow and capital recovery."}</p>
           {calculationError && <p role="alert" className="error">{calculationError}</p>}
-          {result && <>
-            <DealStrength result={result} arv={Number(fields.arv)} monthlyRent={Number(fields.monthlyRent)} />
-          </>}
-          <PurchasePriceExplorer price={fields.purchasePrice} arv={Number(fields.arv)} target={targetPrice} onChange={value => update("purchasePrice", value)} />
+          <div className="deal-metrics-workspace">
+            <PurchasePriceExplorer price={fields.purchasePrice} arv={Number(fields.arv)} target={targetPrice} onChange={value => update("purchasePrice", value)} />
+            {result && <DealStrength result={result} arv={Number(fields.arv)} monthlyRent={Number(fields.monthlyRent)} />}
+          </div>
       </section>}
         <section className="panel primary-estimates" aria-labelledby="primary-estimates-heading">
           <p className="eyebrow input-category">02 · YOUR INPUTS</p>
