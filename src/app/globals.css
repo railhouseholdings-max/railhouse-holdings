@@ -85,3 +85,8 @@
 .save-deal-controls .button:disabled{opacity:.65;cursor:wait}
 .topbar>form{margin-left:16px}
 @media(max-width:767px){.topbar>form{margin-left:8px}.topbar>form .text-link{font-size:10px}.save-deal-controls .button{width:100%;min-height:48px}}
+
+/* Bring calculated metrics to the start of the stacked calculator. */
+.results-heading,#primary-estimates-heading{scroll-margin-top:24px}
+.edit-deal-inputs{display:none}
+@media(max-width:1190px){.calculator-layout.has-results>.results-column{order:-1}.has-results .edit-deal-inputs{display:inline-flex;min-height:44px;align-items:center;margin-bottom:12px}}

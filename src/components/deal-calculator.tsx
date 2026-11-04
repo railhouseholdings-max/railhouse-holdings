@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { SaveDealRequest } from "@/domain/saved-deal";
 import type { DealAnalysis, DealInputs } from "@/domain/models";
@@ -84,6 +84,15 @@ function InputFields({ definitions, values, onChange, trailing }: {
 
 export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: { initialDeal?: DealAnalysis | null; asOfDate: string; cloudEnabled?: boolean }) {
   const router = useRouter();
+  const resultsHeading = useRef<HTMLHeadingElement>(null);
+  const inputsHeading = useRef<HTMLHeadingElement>(null);
+  const [calculationRequest, setCalculationRequest] = useState(0);
+  useEffect(() => {
+    if (calculationRequest === 0) return;
+    const heading = resultsHeading.current;
+    heading?.focus({ preventScroll: true });
+    heading?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
+  }, [calculationRequest]);
   const [fields, setFields] = useState(() => initialDealFields(asOfDate, initialDeal?.inputs));
   const automaticContingency = useRef(!initialDeal);
   const [address, setAddress] = useState(initialDeal?.address ?? "");
@@ -179,11 +188,11 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
     {isExample && <p className="notice">{isEdited ? "Editing the spreadsheet example." : "Spreadsheet example loaded."} Uses the spreadsheet’s project and rental inputs with the new closing-document fee baseline. Closing totals now include itemized lender/title fees, prepaid premiums, and escrow.</p>}
     {referenceLoaded && <p className="notice">{isEdited ? "Editing the closing-document reference. Calculated amounts reflect your current inputs. " : ""}Closing-document loan terms loaded: $113,250 loan, 6.25%, 30 years, funding June 8, 2026. Project costs and rent are still your inputs. The source closing reported $105,833.63 cash to borrower. This analysis uses the selected county rental estimate or manual override; closing totals may differ from the historical reference.</p>}
     {purchaseReferenceLoaded && <p className="notice">Purchase statement reference loaded: December 19, 2025 · $80,000 purchase, $50,000 estimated rehab, and $314 purchase closing fees. Source total: $130,314. Current results use any edits you make; other assumptions remain your inputs.</p>}
-    <div className="calculator-layout">
-      <form onSubmit={event => { event.preventDefault(); setShowResults(true); }} className="calculator-form">
+    <div className={`calculator-layout${showResults ? " has-results" : ""}`}>
+      <form onSubmit={event => { event.preventDefault(); setShowResults(true); setCalculationRequest(request => request + 1); }} className="calculator-form">
         <section className="panel primary-estimates" aria-labelledby="primary-estimates-heading">
           <p className="eyebrow input-category">YOUR INPUTS</p>
-          <div className="step-heading"><div><h2 id="primary-estimates-heading">Primary estimates</h2><p>Your inputs: purchase, renovation, finished value, and rent.</p></div></div>
+          <div className="step-heading"><div><h2 id="primary-estimates-heading" ref={inputsHeading} tabIndex={-1}>Primary estimates</h2><p>Your inputs: purchase, renovation, finished value, and rent.</p></div></div>
           <AddressAutocomplete value={address} onChange={changeAddress} />
           {renderFields([...projectFields.filter(field => ["purchasePrice", "rehabBudget", "arv"].includes(field.key)),operatingFields[0]])}
           <PropertyTaxFields model={taxModel} projectedRent={fields.monthlyRent} />
@@ -249,13 +258,17 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
       </form>
       <aside className="results-column">
         <section className="panel results" aria-live="polite" aria-atomic="true">
-          <p className="eyebrow">YOUR DEAL AT A GLANCE</p><h2>{result ? "Does the deal work?" : "A clear picture, before you buy."}</h2>
+          <p className="eyebrow">YOUR DEAL AT A GLANCE</p><h2 ref={resultsHeading} tabIndex={-1} className="results-heading">{result ? "Does the deal work?" : "A clear picture, before you buy."}</h2>
           <p className="muted result-description">{result ? address || (isExample ? "Spreadsheet reference scenario" : "Your analysis") : "Enter the four project numbers, then calculate to see cash flow and capital recovery."}</p>
+          {showResults && <button type="button" className="text-link edit-deal-inputs" onClick={() => {
+            inputsHeading.current?.focus({ preventScroll: true });
+            inputsHeading.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
+          }}>Edit inputs ↓</button>}
           {calculationError && <p role="alert" className="error">{calculationError}</p>}
           {result ? <>
-            {cloudEnabled && <div className="save-deal-controls"><button className="button" type="button" disabled={saving} onClick={saveDeal}>{saving ? "Saving…" : savedRecord ? "Update saved deal" : "Save deal"}</button><p className="note" role="status">{saveMessage || "Saves project inputs, fee adjustments, and tax assumptions to your private database."}</p></div>}
             <DealStrength result={result} arv={Number(fields.arv)} monthlyRent={Number(fields.monthlyRent)} />
             <div className="capital-summary"><div><span>{explained("Cash left in the deal", "cashRemainingInDeal")}</span><strong>{money(result.cashRemainingInDeal, true)}</strong></div><div><span>{explained("Capital recovered", "recoveryPercent")}</span><strong>{percent(result.recoveryPercent)}</strong></div></div>
+            {cloudEnabled && <div className="save-deal-controls"><button className="button" type="button" disabled={saving} onClick={saveDeal}>{saving ? "Saving…" : savedRecord ? "Update saved deal" : "Save deal"}</button><p className="note" role="status">{saveMessage || "Saves project inputs, fee adjustments, and tax assumptions to your private database."}</p></div>}
             {result.cashRemainingInDeal < 0 && <p className="note">Negative cash left means refinance proceeds exceed the modeled project cost.</p>}
             <h3 className="breakdown-title">Refinance & cash returned</h3>
             <DetailRows rows={[
