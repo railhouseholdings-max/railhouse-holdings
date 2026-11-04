@@ -12,7 +12,8 @@ The actual labels retain values outside each dial's scale; only the needles clam
 
 Overall rating:
 
-- Bad: any negative cash flow, recovery below 85%, or negative value created.
+- Bad: negative cash flow or negative value created.
+- Moderate: nonnegative cash flow and value created, with recovery below 85%. Lower recovery alone does not make a deal Bad.
 - Good: nonnegative cash flow and value created, and >=85% recovery.
 - Excellent: all of >=$250/month cash flow, >=100% recovery, and >=20% value created.
 - Not rated: missing positive project cost, ARV, or rent, or undefined recovery.
@@ -22,4 +23,12 @@ Supporting metrics do not affect the rating:
 - Debt coverage = monthly NOI / P&I. NOI is cash flow + P&I + CapEx (excludes capital replacements, includes entered operating costs and vacancy/maintenance reserves). No debt service => N/A. No lender eligibility claim.
 - Cash-on-cash = annualized monthly cash flow / positive modeled cash remaining. Zero/negative cash left => N/A, not an infinite return.
 
-`tests/deal-strength.test.ts` covers all rating boundaries and gates, zero denominators, full/excess capital recovery, NOI/CapEx treatment, and needle clamping. Existing detailed financial breakdowns remain below the visuals.
+`tests/deal-strength.test.ts` covers all rating boundaries and gates, zero denominators, full/excess capital recovery, NOI/CapEx treatment, and needle clamping. The calculated page reads in three labeled sections: deal metrics and the price explorer, primary inputs, then derived values and assumptions. Supporting metrics and detailed financial breakdowns live in the third section.
+
+## Purchase-price explorer
+
+After calculation, a slider and numeric price field share the primary purchase-price state. Changes recalculate the dials and breakdowns immediately. The gold tick and “Use target” button identify the highest whole-dollar purchase price meeting the Good thresholds, holding other inputs fixed.
+
+The target limits total project cost to the lesser of ARV and net whole-project refinance recovery / 0.85, then subtracts all non-purchase project costs (including net purchase fees). Negative monthly cash flow, nonpositive recovery, or infeasible fixed costs produce “No price-only solution.” The target is rounded down to a whole dollar. It uses the current modeled fees and assumptions, not a market valuation.
+
+Purchase-price changes do not change monthly cash flow because the refinance is sized from ARV. They change capital recovery, cash remaining, value created, and cash-on-cash return. `tests/target-purchase-price.test.ts` verifies the boundary through the actual deal calculation and rating functions.

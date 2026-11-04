@@ -45,6 +45,7 @@
 /* Calculation results: color is reinforced by values, labels, and target marks. */
 .deal-strength{container-type:inline-size;margin-bottom:24px}
 .strength-rating{display:flex;align-items:center;gap:20px;padding:20px;border:1px solid #c8d8bf;border-left:4px solid #708e51;background:#f0f5e9;border-radius:7px}
+.strength-rating.moderate{border-color:#e4d4ad;border-left-color:#a37b29;background:#faf5e8}
 .strength-rating.bad{border-color:#e3c2b9;border-left-color:#b34d3e;background:#fcf0ec}
 .strength-rating.excellent{border-color:#b9d4c2;border-left-color:#347c50;background:#eaf4ed}
 .strength-rating.unrated{background:#f3f4f0;border-color:var(--line)}
@@ -86,11 +87,44 @@
 .topbar>form{margin-left:16px}
 @media(max-width:767px){.topbar>form{margin-left:8px}.topbar>form .text-link{font-size:10px}.save-deal-controls .button{width:100%;min-height:48px}}
 
-/* Bring calculated metrics to the start of the stacked calculator. */
 .results-heading,#primary-estimates-heading{scroll-margin-top:24px}
-.edit-deal-inputs{display:none}
-@media(max-width:1190px){.calculator-layout.has-results>.results-column{order:-1}.has-results .edit-deal-inputs{display:inline-flex;min-height:44px;align-items:center;margin-bottom:12px}}
+/* Keep the reading order consistent: metrics, primary inputs, then derived values. */
+.calculator-sections{display:grid;grid-template-columns:minmax(0,1fr);gap:26px}
+.calculator-sections>.panel{margin-bottom:0}
+.deal-metrics-section{border-top:4px solid #708e51}
+.calculator-sections>.primary-estimates{border-top:4px solid var(--green)}
+.calculator-section-heading{margin-bottom:24px}
+.calculator-section-heading h2{margin-bottom:10px}
+.calculator-section-heading>p:last-child{font-size:12px;line-height:1.7;color:var(--muted)}
+.derived-section{min-width:0;border-top:2px solid #c6d1bf;padding-top:26px}
+.derived-values-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px;align-items:start}
+.derived-values-grid>.estimated-costs{margin:0;padding:0;border:0}
+.estimated-costs-heading h3{font-size:19px;margin-bottom:10px}
+.derived-results{min-width:0}
+.deal-metrics-section .deal-strength{margin-bottom:0}
+.derived-results .strength-supporting{margin-bottom:12px}
+@media(max-width:1190px){.derived-values-grid{grid-template-columns:minmax(0,1fr)}}
 
 .address-dropdown li{padding:0}
 .address-dropdown li>button{display:block;width:100%;min-height:60px;padding:12px;border:0;border-radius:4px;background:transparent;color:inherit;text-align:left;touch-action:pan-y}
 .address-dropdown li>button:hover{background:#edf3e6}
+
+.purchase-price-explorer{margin-top:24px;padding:24px;border:1px solid #c9d8bf;border-radius:10px;background:#f4f7ef}
+.price-explorer-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.price-explorer-heading .eyebrow{margin-bottom:8px}
+.price-explorer-heading h3{font-size:19px}
+.price-live-label{font-size:10px;color:#3e6a43;background:#e4eddc;padding:6px 9px;border-radius:20px;white-space:nowrap}
+.explorer-price-field{max-width:250px}
+.purchase-price-track{position:relative;margin-top:14px}
+.purchase-price-slider{display:block;width:100%;height:44px;margin:0;padding:0;appearance:none;-webkit-appearance:none;background:transparent;cursor:ew-resize;touch-action:pan-y}
+.purchase-price-slider::-webkit-slider-runnable-track{height:8px;border-radius:8px;background:linear-gradient(to right,var(--green) var(--price-progress),#d6dfcf var(--price-progress))}
+.purchase-price-slider::-moz-range-track{height:8px;border-radius:8px;background:linear-gradient(to right,var(--green) var(--price-progress),#d6dfcf var(--price-progress))}
+.purchase-price-slider::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:28px;height:28px;margin-top:-10px;background:var(--green);border:4px solid white;border-radius:50%;box-shadow:0 1px 6px #173e3340}
+.purchase-price-slider::-moz-range-thumb{width:20px;height:20px;background:var(--green);border:4px solid white;border-radius:50%;box-shadow:0 1px 6px #173e3340}
+.purchase-price-target-mark{position:absolute;top:11px;width:3px;height:22px;border-radius:2px;background:#a37b29;pointer-events:none;transform:translateX(-50%)}
+.price-range-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted)}
+.purchase-price-target{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #d3deca;padding-top:18px;margin:20px 0 14px}
+.purchase-price-target span{display:block;font-size:11px;color:#5b6d50}
+.purchase-price-target strong{display:block;font-size:25px;letter-spacing:-.5px;margin:7px 0}
+.purchase-price-target small{display:block;color:var(--muted);line-height:1.6}
+@media(max-width:767px){.purchase-price-explorer{padding:18px 14px}.price-explorer-heading h3{font-size:16px}.purchase-price-target{align-items:flex-start;flex-direction:column}.purchase-price-target .button{width:100%}.explorer-price-field{max-width:none}}

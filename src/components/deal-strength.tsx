@@ -49,10 +49,17 @@ export function DealStrength({ result, arv, monthlyRent }: { result: ReturnType<
       <StrengthGauge label="Value created" value={strength.valueCreatedPercent} display={percent(strength.valueCreatedPercent)} min={-20} max={40} low="−20%" high="40%" target={0} targetLabel="Break-even: ARV = project cost" status={strength.valueCreatedPercent === null ? 'N/A' : `${money(strength.valueCreated, true)} net value`}
         explanation="(ARV − total project cost) ÷ total project cost × 100. Project cost includes purchase, rehab, contingency, holding, and net purchase closing fees. This measures projected value above your all-in project cost, before refinance costs; it is not gross appreciation, an annual return, or proof that rehab alone caused the increase. Zero project cost is N/A. Dial range: −20% to +40%." />
     </div>
+  </div>;
+}
+
+export function DealStrengthDetails({ result, arv, monthlyRent }: { result: ReturnType<typeof calculateDeal>; arv: number; monthlyRent: number }) {
+  const strength = assessDealStrength({ ...result, arv, monthlyRent });
+  const rules = STRENGTH_RULES;
+  return <>
     <div className="strength-supporting">
       <div><ExplainedValue label="Debt coverage" explanation={<p>Net operating income ÷ principal and interest. NOI here is rent less entered operating expenses and vacancy/maintenance reserves, excluding CapEx. Below 1.00× means operations do not cover debt service before CapEx. This is a model check, not a lender qualification. No debt service: N/A.</p>} /><strong>{strength.debtCoverage === null ? 'N/A' : `${strength.debtCoverage.toFixed(2)}×`}</strong></div>
       <div><ExplainedValue label="Cash-on-cash return" explanation={<p>12 × monthly cash flow ÷ cash remaining in the deal × 100. Uses stabilized modeled cash flow and whole-project cash left after refinance. N/A when cash left is zero or negative; full capital recovery does not imply an infinite return.</p>} /><strong>{percent(strength.cashOnCashPercent)}</strong></div>
     </div>
-    <details className="strength-rules"><summary>How the rating works</summary><p>Bad: negative cash flow, recovery below {rules.recoveryTarget}%, or negative value created. Good: all three meet those minimums. Excellent: at least ${rules.excellentCashFlow}/month cash flow, {rules.excellentRecovery}% recovery, and {rules.excellentValueCreated}% value created.</p><p>These are initial Railhouse planning rules, not market benchmarks. Neutral cash flow is $0–${rules.neutralCashFlowMax}/month. Dials show separate scales; the tick marks break-even or the recovery target. Debt coverage and cash-on-cash are context and do not change the rating. Results depend on your estimated ARV, rent, taxes, and reserves.</p></details>
-  </div>;
+    <details className="strength-rules"><summary>How the rating works</summary><p>Bad: negative cash flow or projected value below total project cost. Moderate: nonnegative cash flow and value created, with recovery below {rules.recoveryTarget}%. Good: nonnegative cash flow and value created, with at least {rules.recoveryTarget}% recovery. Excellent: at least ${rules.excellentCashFlow}/month cash flow, {rules.excellentRecovery}% recovery, and {rules.excellentValueCreated}% value created.</p><p>These are initial Railhouse planning rules, not market benchmarks. Neutral cash flow is $0–${rules.neutralCashFlowMax}/month. Dials show separate scales; the tick marks break-even or the recovery target. Debt coverage and cash-on-cash are context and do not change the rating. Results depend on your estimated ARV, rent, taxes, and reserves.</p></details>
+  </>;
 }

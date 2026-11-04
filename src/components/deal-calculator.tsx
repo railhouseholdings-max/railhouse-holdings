@@ -7,7 +7,9 @@ import type { DealAnalysis, DealInputs } from "@/domain/models";
 import { calculateDeal } from "@/lib/calculations/deal";
 import { money, percent } from "@/lib/format";
 import { DetailRows } from "./ui";
-import { DealStrength } from "./deal-strength";
+import { PurchasePriceExplorer } from "./purchase-price-explorer";
+import { targetPurchasePrice } from "@/lib/calculations/target-purchase-price";
+import { DealStrength, DealStrengthDetails } from "./deal-strength";
 import { withSelectedPropertyTaxes } from "@/lib/calculations/tax-estimate";
 import { PropertyTaxFields, usePropertyTaxModel } from "./property-tax-estimate";
 import { AddressAutocomplete } from "./address-autocomplete";
@@ -150,7 +152,8 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
   const update = (key: keyof DealInputs, value: string) => {
     if (key === "unexpectedConstructionCosts") automaticContingency.current = false;
     setFields(previous => updateEstimatedFields(previous, key, value, { contingency: automaticContingency.current }));
-    if (key !== "annualPropertyTaxes") setShowResults(false);
+    if (key !== "annualPropertyTaxes" && key !== "purchasePrice") setShowResults(false);
+    setSaveMessage("");
     setIsEdited(true);
   };
   const saveDeal = async () => {
@@ -168,6 +171,7 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
     } catch(error) {setSaveMessage(error instanceof Error ? error.message : "Save failed. Your inputs remain in this tab.");}
     finally {setSaving(false);}
   };
+  const targetPrice = result && calculatedInput ? targetPurchasePrice(calculatedInput, result) : null;
   const explained = (label: string, key: string) => <ExplainedValue label={label} explanation={<p>{explanations[key]}</p>} />;
   const renderFields = (definitions: Field[], trailing?: ReactNode) => <InputFields definitions={definitions} values={fields} onChange={update} trailing={trailing} />;
 
@@ -178,11 +182,19 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
     {taxModel.warning && <p className="notice tax-warning" role="alert">{taxModel.warning}</p>}
     {referenceLoaded && <p className="notice">{isEdited ? "Editing the closing-document reference. Calculated amounts reflect your current inputs. " : ""}Closing-document loan terms loaded: $113,250 loan, 6.25%, 30 years, funding June 8, 2026. Project costs and rent are still your inputs. The source closing reported $105,833.63 cash to borrower. This analysis uses the selected county rental estimate or manual override; closing totals may differ from the historical reference.</p>}
     {purchaseReferenceLoaded && <p className="notice">Purchase statement reference loaded: December 19, 2025 · $80,000 purchase, $50,000 estimated rehab, and $314 purchase closing fees. Source total: $130,314. Current results use any edits you make; other assumptions remain your inputs.</p>}
-    <div className={`calculator-layout${showResults ? " has-results" : ""}`}>
-      <form onSubmit={event => { event.preventDefault(); setShowResults(true); setCalculationRequest(request => request + 1); }} className="calculator-form">
+    <form onSubmit={event => { event.preventDefault(); setShowResults(true); setCalculationRequest(request => request + 1); }} className="calculator-form calculator-sections">
+      {showResults && <section className="panel results deal-metrics-section" aria-labelledby="deal-metrics-heading">
+          <p className="eyebrow">01 · DEAL METRICS</p><h2 id="deal-metrics-heading" ref={resultsHeading} tabIndex={-1} className="results-heading">{result ? "Deal metrics & rating" : "A clear picture, before you buy."}</h2>
+          <p className="muted result-description">{result ? address || "Your analysis" : "Enter the four project numbers, then calculate to see cash flow and capital recovery."}</p>
+          {calculationError && <p role="alert" className="error">{calculationError}</p>}
+          {result && <>
+            <DealStrength result={result} arv={Number(fields.arv)} monthlyRent={Number(fields.monthlyRent)} />
+          </>}
+          <PurchasePriceExplorer price={fields.purchasePrice} arv={Number(fields.arv)} target={targetPrice} onChange={value => update("purchasePrice", value)} />
+      </section>}
         <section className="panel primary-estimates" aria-labelledby="primary-estimates-heading">
-          <p className="eyebrow input-category">YOUR INPUTS</p>
-          <div className="step-heading"><div><h2 id="primary-estimates-heading" ref={inputsHeading} tabIndex={-1}>Primary estimates</h2><p>Your inputs: purchase, renovation, finished value, and rent.</p></div></div>
+          <p className="eyebrow input-category">02 · YOUR INPUTS</p>
+          <div className="step-heading"><div><h2 id="primary-estimates-heading" ref={inputsHeading} tabIndex={-1}>Your primary estimates</h2><p>Your inputs: purchase, renovation, finished value, and rent.</p></div></div>
           <AddressAutocomplete value={address} onChange={changeAddress} />
           {renderFields([...projectFields.filter(field => ["purchasePrice", "rehabBudget", "arv"].includes(field.key)),operatingFields[0]])}
           <PropertyTaxFields model={taxModel} projectedRent={fields.monthlyRent} />
@@ -192,10 +204,17 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
         }}>Clear inputs</button></div>
           <p className="note">Calculations use the county rental estimate or your annual-tax override. Current county taxes are historical reference only.</p>
         </section>
+      <section className="derived-section" aria-labelledby="derived-values-heading">
+        <header className="calculator-section-heading">
+          <p className="eyebrow">03 · ESTIMATES & BREAKDOWN</p>
+          <h2 id="derived-values-heading">Derived values & assumptions</h2>
+          <p>Estimated costs, financing assumptions, and the detailed results calculated from your inputs.</p>
+        </header>
+        <div className="derived-values-grid">
         <div className="estimated-costs" role="group" aria-labelledby="estimated-costs-heading">
           <header className="estimated-costs-heading">
             <p className="eyebrow">ESTIMATED FOR YOU</p>
-            <h2 id="estimated-costs-heading">Costs & assumptions</h2>
+            <h3 id="estimated-costs-heading">Costs & assumptions</h3>
             <p>Prefilled from your project inputs and reference documents. Review and adjust as needed.</p>
           </header>
         <section className="panel" aria-labelledby="inferred-costs-heading">
@@ -245,18 +264,10 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
           </details>
         </section>
         </div>
-      </form>
-      <aside className="results-column">
-        <section className="panel results" aria-live="polite" aria-atomic="true">
-          <p className="eyebrow">YOUR DEAL AT A GLANCE</p><h2 ref={resultsHeading} tabIndex={-1} className="results-heading">{result ? "Does the deal work?" : "A clear picture, before you buy."}</h2>
-          <p className="muted result-description">{result ? address || "Your analysis" : "Enter the four project numbers, then calculate to see cash flow and capital recovery."}</p>
-          {showResults && <button type="button" className="text-link edit-deal-inputs" onClick={() => {
-            inputsHeading.current?.focus({ preventScroll: true });
-            inputsHeading.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
-          }}>Edit inputs ↓</button>}
-          {calculationError && <p role="alert" className="error">{calculationError}</p>}
-          {result ? <>
-            <DealStrength result={result} arv={Number(fields.arv)} monthlyRent={Number(fields.monthlyRent)} />
+          <div className="derived-results">
+            {result && <section className="panel results" aria-labelledby="detailed-results-heading">
+              <h3 id="detailed-results-heading">Calculated results</h3>
+              <DealStrengthDetails result={result} arv={Number(fields.arv)} monthlyRent={Number(fields.monthlyRent)} />
             <div className="capital-summary"><div><span>{explained("Cash left in the deal", "cashRemainingInDeal")}</span><strong>{money(result.cashRemainingInDeal, true)}</strong></div><div><span>{explained("Capital recovered", "recoveryPercent")}</span><strong>{percent(result.recoveryPercent)}</strong></div></div>
             {cloudEnabled && <div className="save-deal-controls"><button className="button" type="button" disabled={saving} onClick={saveDeal}>{saving ? "Saving…" : savedRecord ? "Update saved deal" : "Save deal"}</button><p className="note" role="status">{saveMessage || "Saves project inputs, fee adjustments, and tax assumptions to your private database."}</p></div>}
             {result.cashRemainingInDeal < 0 && <p className="note">Negative cash left means refinance proceeds exceed the modeled project cost.</p>}
@@ -287,8 +298,7 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
               [explained("Maintenance reserve", "maintenanceReserve"), money(result.maintenanceReserve, true)],
               [explained("Total monthly costs", "totalMonthlyCost"), money(result.totalMonthlyCost, true)],
             ]} /></details>
-          </> : <div className="empty-result"><span aria-hidden="true">$</span><p>How much stays invested?<br />How much does it earn each month?</p></div>}
-        </section>
+            </section>}
         <details className="panel assumptions"><summary>How these estimates work</summary><ul>
           <li>Project cost includes purchase, rehab, holding, construction contingency, and net purchase closing costs. Purchase and refinance transaction fees are separate; rehab is counted only once.</li>
           <li>Closing charges use your signed package’s fixed-fee baseline and 1.75% origination. They are read-only estimates, not guaranteed fees for another property.</li>
@@ -299,7 +309,9 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
           <li>The original sheet’s single rent and editable management rate remain. ROE awaits a defined formula.</li>
           <li>No appreciation, income tax, disposition, or future prepayment-penalty forecast is included.</li>
         </ul></details>
-      </aside>
-    </div>
+          </div>
+        </div>
+      </section>
+    </form>
   </>;
 }

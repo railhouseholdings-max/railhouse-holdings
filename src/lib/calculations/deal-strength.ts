@@ -8,12 +8,13 @@ export function assessDealStrength(input: StrengthInput) {
   const valueCreatedPercent = input.totalProjectCost > 0 ? valueCreated / input.totalProjectCost * 100 : null;
   const cashFlowStatus = input.monthlyCashFlow < 0 ? 'Negative' : input.monthlyCashFlow <= STRENGTH_RULES.neutralCashFlowMax ? 'Neutral' : 'Positive';
   const rateable = input.totalProjectCost > 0 && input.arv > 0 && input.monthlyRent > 0 && input.recoveryPercent !== null;
-  let rating: 'Bad' | 'Good' | 'Excellent' | null = null;
+  let rating: 'Bad' | 'Moderate' | 'Good' | 'Excellent' | null = null;
   const concerns: string[] = [];
   if (input.monthlyCashFlow < 0) concerns.push('Cash flow is negative.');
   if (input.recoveryPercent !== null && input.recoveryPercent < STRENGTH_RULES.recoveryTarget) concerns.push('Cash recovery is below the 85% target.');
   if (valueCreated < 0) concerns.push('Projected value is below total project cost.');
-  if (rateable) rating = concerns.length ? 'Bad'
+  if (rateable) rating = input.monthlyCashFlow < 0 || valueCreated < 0 ? 'Bad'
+    : input.recoveryPercent! < STRENGTH_RULES.recoveryTarget ? 'Moderate'
     : input.monthlyCashFlow >= STRENGTH_RULES.excellentCashFlow && input.recoveryPercent! >= STRENGTH_RULES.excellentRecovery && valueCreatedPercent! >= STRENGTH_RULES.excellentValueCreated ? 'Excellent' : 'Good';
   // NOI excludes capital replacements; debt service is principal + interest only.
   const monthlyNoi = input.monthlyCashFlow + input.monthlyPrincipalAndInterest + input.monthlyCapexReserve;

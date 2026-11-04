@@ -8,9 +8,21 @@ test('value created is net of rehab and all modeled project costs, not gross pri
   assert.equal(result.valueCreatedPercent,20);
   assert.equal(result.rating,'Excellent');
 });
-test('each weak primary factor gates the overall score', () => {
-  for (const change of [{monthlyCashFlow:-0.01},{recoveryPercent:84.99},{arv:99999}]) assert.equal(assessDealStrength({...base,...change}).rating,'Bad');
+test('lower recovery alone is Moderate, including at zero recovery', () => {
+  for (const recoveryPercent of [0, 50, 84.99]) {
+    const result = assessDealStrength({...base, recoveryPercent});
+    assert.equal(result.rating, 'Moderate');
+    assert.deepEqual(result.concerns, ['Cash recovery is below the 85% target.']);
+  }
+  assert.equal(assessDealStrength({...base,monthlyCashFlow:0,recoveryPercent:84.99,arv:100000}).rating,'Moderate');
   assert.equal(assessDealStrength({...base,monthlyCashFlow:0,recoveryPercent:85,arv:100000}).rating,'Good');
+});
+test('negative cash flow or value created is Bad regardless of recovery', () => {
+  for (const recoveryPercent of [50, 85, 100]) {
+    for (const change of [{monthlyCashFlow:-0.01},{arv:99999}]) {
+      assert.equal(assessDealStrength({...base,...change,recoveryPercent}).rating,'Bad');
+    }
+  }
 });
 test('excellent requires every stronger target simultaneously', () => {
   for (const change of [{monthlyCashFlow:249.99},{recoveryPercent:99.99},{arv:119999}]) assert.equal(assessDealStrength({...base,...change}).rating,'Good');
