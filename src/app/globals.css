@@ -156,3 +156,5 @@
 .deal-metrics-workspace .gauge-status{font-size:9px;margin-top:3px}
 .deal-metrics-workspace .strength-gauge small{font-size:8px;margin-top:3px}
 }
+
+.share-deal-controls{margin:0 0 20px}.share-deal-controls .button{min-height:44px}.share-deal-controls .button:disabled{opacity:.65;cursor:wait}.share-deal-controls .error{margin-top:10px}

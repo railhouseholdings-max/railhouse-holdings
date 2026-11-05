@@ -7,6 +7,7 @@ import type { DealAnalysis, DealInputs } from "@/domain/models";
 import { calculateDeal } from "@/lib/calculations/deal";
 import { money, percent } from "@/lib/format";
 import { DetailRows } from "./ui";
+import { ShareDealButton } from "./share-deal-button";
 import { PurchasePriceExplorer } from "./purchase-price-explorer";
 import { targetPurchasePrice } from "@/lib/calculations/target-purchase-price";
 import { DealStrength, DealStrengthDetails } from "./deal-strength";
@@ -187,6 +188,7 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
           <p className="eyebrow">01 · DEAL METRICS</p><h2 id="deal-metrics-heading" ref={resultsHeading} tabIndex={-1} className="results-heading">{result ? "Deal metrics & rating" : "A clear picture, before you buy."}</h2>
           <p className="muted result-description">{result ? address || "Your analysis" : "Enter the four project numbers, then calculate to see cash flow and capital recovery."}</p>
           {calculationError && <p role="alert" className="error">{calculationError}</p>}
+          {result && calculatedInput && <ShareDealButton address={address} input={calculatedInput} result={result} taxExplanation={taxModel.selected.explanation} />}
           <div className="deal-metrics-workspace">
             <PurchasePriceExplorer price={fields.purchasePrice} arv={Number(fields.arv)} target={targetPrice} onChange={value => update("purchasePrice", value)} />
             {result && <DealStrength result={result} arv={Number(fields.arv)} monthlyRent={Number(fields.monthlyRent)} />}
