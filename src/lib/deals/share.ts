@@ -1,3 +1,5 @@
+import { proposedPropertyTotals, type PropertyDetailsDraft } from "./property-details.ts";
+import type { RentCastLookup } from "../../domain/property-lookup.ts";
 import type { DealInputs } from '../../domain/models.ts';
 import type { calculateDeal } from '../calculations/deal.ts';
 import { assessDealStrength } from '../calculations/deal-strength.ts';
@@ -10,9 +12,11 @@ export function isMobileShareAvailable(device: { userAgent: string; maxTouchPoin
   return secure && shareSupported && mobile;
 }
 
-export function formatDealShare(address: string, input: DealInputs, result: ReturnType<typeof calculateDeal>, taxExplanation: string): string {
+export function formatDealShare(address: string, input: DealInputs, result: ReturnType<typeof calculateDeal>, taxExplanation: string, property?: RentCastLookup, propertyDraft?: PropertyDetailsDraft): string {
   const strength = assessDealStrength({...result, arv:input.arv, monthlyRent:input.monthlyRent});
   const target = targetPurchasePrice(input, result);
+  const totals = propertyDraft ? proposedPropertyTotals(property, propertyDraft) : null;
+  const hasAdditions = propertyDraft && Object.values(propertyDraft.additions).some(value => Number(value) !== 0);
   const dollars = (label: string, value: number) => `${label}: ${money(value, true)}`;
   return [
     'RAILHOUSE HOLDINGS — DEAL ESTIMATE',
@@ -27,6 +31,9 @@ export function formatDealShare(address: string, input: DealInputs, result: Retu
     `Debt coverage: ${strength.debtCoverage === null ? 'N/A' : strength.debtCoverage.toFixed(2) + '×'}`,
     `Cash-on-cash return: ${percent(strength.cashOnCashPercent)}`,
     `Target purchase price (Good): ${target === null ? 'No price-only solution' : money(target, true)}`,
+    ...(property ? ['', 'PROPERTY DETAILS — RENTCAST', property.address, ...property.facts.map(fact => `${fact.label}: ${fact.value}`), ...(property.rent ? [`RentCast monthly rent estimate${property.rent.perUnit ? ' / unit' : ''}: ${money(property.rent.monthly, true)}`] : []), ...property.warnings, `Retrieved: ${property.fetchedAt.slice(0,10)}`] : []),
+    ...(propertyDraft && Object.keys(propertyDraft.overrides).length ? ['', 'YOUR PROPERTY CORRECTIONS', ...Object.entries(propertyDraft.overrides).map(([label,value]) => `${label}: ${value || 'Not provided'}`)] : []),
+    ...(propertyDraft && hasAdditions && totals ? ['', 'PLANNED ADDITIONS', `Additional bedrooms: ${propertyDraft.additions.bedrooms || '0'}`, `Additional bathrooms: ${propertyDraft.additions.bathrooms || '0'}`, `Additional living area: ${propertyDraft.additions.squareFeet || '0'} sq ft`, `Proposed bedrooms: ${totals.bedrooms ?? 'Current value missing'}`, `Proposed bathrooms: ${totals.bathrooms ?? 'Current value missing'}`, `Proposed living area: ${totals.squareFeet === null ? 'Current value missing' : totals.squareFeet.toLocaleString('en-US') + ' sq ft'}`, 'Proposed layout does not automatically change rent, ARV, or rehab estimates.'] : []),
     '', 'PRIMARY INPUTS',
     dollars('Purchase price', input.purchasePrice), dollars('Rehab budget', input.rehabBudget),
     dollars('After repair value (ARV)', input.arv), dollars('Expected monthly rent', input.monthlyRent),

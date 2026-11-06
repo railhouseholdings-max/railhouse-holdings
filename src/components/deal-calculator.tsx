@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { SaveDealRequest } from "@/domain/saved-deal";
 import type { DealAnalysis, DealInputs } from "@/domain/models";
@@ -13,6 +13,9 @@ import { targetPurchasePrice } from "@/lib/calculations/target-purchase-price";
 import { DealStrength, DealStrengthDetails } from "./deal-strength";
 import { withSelectedPropertyTaxes } from "@/lib/calculations/tax-estimate";
 import { PropertyTaxFields, usePropertyTaxModel } from "./property-tax-estimate";
+import { PropertyLookupDetails, usePropertyLookup } from "./property-lookup";
+import { emptyPropertyDetails } from "@/lib/deals/property-details";
+import { canAutofillRent } from "@/domain/property-lookup";
 import { AddressAutocomplete } from "./address-autocomplete";
 import { ClosingCostEstimate } from "./closing-cost-estimate";
 import { PurchaseCostEstimate } from "./purchase-cost-estimate";
@@ -27,16 +30,16 @@ import { initialDealFields, updateEstimatedFields, type DealFormValues } from "@
 
 type Field = { key: keyof DealInputs; label: string; unit: string; hint?: string; max?: number; disabled?: boolean; placeholder?: string; required?: boolean };
 const projectFields: Field[] = [
-  { key: "purchasePrice", label: "Purchase price", unit: "$" },
-  { key: "rehabBudget", label: "Rehab budget", unit: "$" },
+  { key: "purchasePrice", label: "Purchase price", hint: "Your planned offer or acquisition price. Adjusting it changes project cost, capital recovery, and value created.", unit: "$" },
+  { key: "rehabBudget", label: "Rehab budget", hint: "Your estimated total renovation cost. Include planned additions and improvements.", unit: "$" },
   { key: "unexpectedConstructionCosts", label: "Construction contingency", unit: "$", hint: "Estimated at 4% of rehab; editable. Based on the spreadsheet’s $2,000 / $50,000 allowance." },
   { key: "holdingCosts", label: "Total holding costs", unit: "$", hint: "$1,500 spreadsheet allowance for utilities and other project costs; editable." },
-  { key: "arv", label: "After repair value (ARV)", unit: "$" },
+  { key: "arv", label: "After repair value (ARV)", hint: "Your estimate of the finished property value after renovations. The refinance loan is sized from this amount.", unit: "$" },
 ];
 const loanFields: Field[] = [
-  { key: "refinanceLtv", label: "Refinance LTV", unit: "%", max: 100 },
-  { key: "interestRate", label: "Annual interest rate", unit: "%", max: 100 },
-  { key: "loanTermYears", label: "Loan term", unit: "years", max: 50 },
+  { key: "refinanceLtv", label: "Refinance LTV", hint: "The refinance loan as a percentage of after repair value.", unit: "%", max: 100 },
+  { key: "interestRate", label: "Annual interest rate", hint: "Expected annual refinance interest rate, entered as a percentage.", unit: "%", max: 100 },
+  { key: "loanTermYears", label: "Loan term", hint: "The refinance amortization term in years.", unit: "years", max: 50 },
 ];
 const feeFields: Field[] = [
   { key: "closingCosts", label: "Fixed refinance closing costs", unit: "$", hint: "Exclude appraisal, origination, and escrow entered below." },
@@ -47,15 +50,15 @@ const feeFields: Field[] = [
   { key: "insuranceEscrow", label: "Insurance escrow deposit", unit: "$", hint: "Upfront deposit, separate from annual insurance." },
 ];
 const operatingFields: Field[] = [
-  { key: "monthlyRent", label: "Expected monthly rent", unit: "$" },
+  { key: "monthlyRent", label: "Expected monthly rent", hint: "Expected rent for the whole property each month. RentCast can fill an estimate; review it and edit as needed.", unit: "$" },
   { key: "annualPropertyTaxes", label: "Property taxes / year", unit: "$" },
   { key: "annualInsurance", label: "Homeowners insurance / year", unit: "$", hint: "$970 closing-document estimate. Replace with a quote for this property." },
-  { key: "managementPercent", label: "Property management", unit: "%", max: 100 },
+  { key: "managementPercent", label: "Property management", hint: "Percentage of monthly rent reserved for property management.", unit: "%", max: 100 },
   { key: "monthlyCapexReserve", label: "CapEx reserve / month", unit: "$", hint: "Flat monthly allowance for capital replacements." },
 ];
 const extraFields: Field[] = [
-  { key: "vacancyPercent", label: "Vacancy reserve", unit: "%", max: 100 },
-  { key: "maintenancePercent", label: "Maintenance reserve", unit: "%", max: 100 },
+  { key: "vacancyPercent", label: "Vacancy reserve", hint: "Percentage of rent reserved for vacancy. Starts at 0%; avoid double-counting other reserves.", unit: "%", max: 100 },
+  { key: "maintenancePercent", label: "Maintenance reserve", hint: "Percentage of rent reserved for routine maintenance. Starts at 0%; avoid double-counting other reserves.", unit: "%", max: 100 },
 ];
 type FormValues = DealFormValues;
 
@@ -67,7 +70,7 @@ function InputFields({ definitions, values, onChange, trailing }: {
 }) {
   return <div className="input-grid">{definitions.map(field => (
     <label className="field" key={field.key} htmlFor={field.key}>
-      <span>{field.label}</span>
+      <span>{field.hint ? <ExplainedValue label={field.label} explanation={<p>{field.hint}</p>} /> : field.label}</span>
       <div className={`input-wrap ${field.unit === "date" ? "date-input" : ""}`}>
         <input id={field.key} name={field.key} type={field.unit === "date" ? "date" : "number"}
           inputMode={field.unit === "date" ? undefined : "decimal"}
@@ -78,7 +81,7 @@ function InputFields({ definitions, values, onChange, trailing }: {
           placeholder={field.placeholder ?? "Enter amount"} aria-describedby={field.hint ? `${field.key}-hint` : undefined} />
         {field.unit !== "date" && <span>{field.unit}</span>}
       </div>
-      {field.hint && <small id={`${field.key}-hint`} className="field-hint">{field.hint}</small>}
+      {field.hint && <small id={`${field.key}-hint`} className="sr-only">{field.hint}</small>}
     </label>
   ))}{trailing}</div>;
 }
@@ -96,16 +99,36 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
     heading?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
   }, [calculationRequest]);
   const [fields, setFields] = useState(() => initialDealFields(asOfDate, initialDeal?.inputs));
+  const [propertyDraft, setPropertyDraft] = useState(emptyPropertyDetails);
+  const automaticRent = useRef<string | null>(null);
+  const manualRent = useRef(Boolean(initialDeal));
   const automaticContingency = useRef(!initialDeal);
   const [address, setAddress] = useState(initialDeal?.address ?? "");
   const taxModel = usePropertyTaxModel(address,fields.monthlyRent,{assumptions:initialDeal?.taxAssumptions,evidence:initialDeal?.taxEvidence});
   const [savedRecord,setSavedRecord] = useState<{id:string;revision:number} | null>(initialDeal?.revision ? {id:initialDeal.id,revision:initialDeal.revision} : null);
   const [saving,setSaving] = useState(false);
   const [saveMessage,setSaveMessage] = useState("");
-  const resetEstimates = () => {taxModel.reset(); automaticContingency.current = true; setSavedRecord(null); setSaveMessage("");};
+  const populateRent = useCallback((value: string) => {
+    if (manualRent.current) return;
+    const previousAutomatic = automaticRent.current;
+    automaticRent.current = value;
+    setFields(previous => canAutofillRent(previous.monthlyRent, previousAutomatic) ? { ...previous, monthlyRent: value } : previous);
+    setSaveMessage("");
+  }, []);
+  const propertyLookup = usePropertyLookup(populateRent);
+  const resetEstimates = () => {setPropertyDraft(emptyPropertyDetails()); propertyLookup.invalidate(); automaticRent.current = null; manualRent.current = false; taxModel.reset(); automaticContingency.current = true; setSavedRecord(null); setSaveMessage("");};
   // A new address invalidates query-scoped lookup data automatically. Preserve the
   // explicitly selected tax year and manual override until the user clears them.
-  const changeAddress = (next: string) => {setAddress(next); setShowResults(false);};
+  const changeAddress = (next: string) => {
+    if (next !== address) {
+      setPropertyDraft(emptyPropertyDetails());
+      propertyLookup.invalidate();
+      const previousAutomatic = automaticRent.current;
+      if (previousAutomatic !== null) setFields(previous => previous.monthlyRent === previousAutomatic ? { ...previous, monthlyRent: "" } : previous);
+      automaticRent.current = null;
+    }
+    setAddress(next); setShowResults(false);
+  };
   const [showResults, setShowResults] = useState(Boolean(initialDeal));
   const [isEdited, setIsEdited] = useState(false);
   const [closingAdjustments, setClosingAdjustments] = useState<ClosingAdjustments>(() => ({ ...(initialDeal?.closingAdjustments ?? DEFAULT_CLOSING_ADJUSTMENTS) }));
@@ -151,6 +174,7 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
     }
   }
   const update = (key: keyof DealInputs, value: string) => {
+    if (key === "monthlyRent") { automaticRent.current = null; manualRent.current = value.trim() !== ""; }
     if (key === "unexpectedConstructionCosts") automaticContingency.current = false;
     setFields(previous => updateEstimatedFields(previous, key, value, { contingency: automaticContingency.current }));
     if (key !== "annualPropertyTaxes" && key !== "purchasePrice") setShowResults(false);
@@ -177,38 +201,38 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
   const renderFields = (definitions: Field[], trailing?: ReactNode) => <InputFields definitions={definitions} values={fields} onChange={update} trailing={trailing} />;
 
   return <>
-    <div className="analysis-intro">
-      <div><strong>Start with your four estimates.</strong><p>Enter the project numbers, then review the costs estimated below. Add the property address for tax lookup. {cloudEnabled ? "Calculate, then Save deal to keep the analysis. Unsaved edits stay in this tab only." : "Inputs are not saved in demo mode."}</p></div>
-    </div>
     {taxModel.warning && <p className="notice tax-warning" role="alert">{taxModel.warning}</p>}
     {referenceLoaded && <p className="notice">{isEdited ? "Editing the closing-document reference. Calculated amounts reflect your current inputs. " : ""}Closing-document loan terms loaded: $113,250 loan, 6.25%, 30 years, funding June 8, 2026. Project costs and rent are still your inputs. The source closing reported $105,833.63 cash to borrower. This analysis uses the selected county rental estimate or manual override; closing totals may differ from the historical reference.</p>}
     {purchaseReferenceLoaded && <p className="notice">Purchase statement reference loaded: December 19, 2025 · $80,000 purchase, $50,000 estimated rehab, and $314 purchase closing fees. Source total: $130,314. Current results use any edits you make; other assumptions remain your inputs.</p>}
     <form onSubmit={event => { event.preventDefault(); setShowResults(true); setCalculationRequest(request => request + 1); }} className="calculator-form calculator-sections">
       {showResults && <section className="panel results deal-metrics-section" aria-labelledby="deal-metrics-heading">
-          <p className="eyebrow">01 · DEAL METRICS</p><h2 id="deal-metrics-heading" ref={resultsHeading} tabIndex={-1} className="results-heading">{result ? "Deal metrics & rating" : "A clear picture, before you buy."}</h2>
+          <p className="eyebrow section-kicker">01 · DEAL METRICS</p><h2 id="deal-metrics-heading" ref={resultsHeading} tabIndex={-1} className="results-heading">{result ? "Deal metrics & rating" : "A clear picture, before you buy."}</h2>
           <p className="muted result-description">{result ? address || "Your analysis" : "Enter the four project numbers, then calculate to see cash flow and capital recovery."}</p>
           {calculationError && <p role="alert" className="error">{calculationError}</p>}
-          {result && calculatedInput && <ShareDealButton address={address} input={calculatedInput} result={result} taxExplanation={taxModel.selected.explanation} />}
+          {result && calculatedInput && <ShareDealButton address={address} input={calculatedInput} result={result} taxExplanation={taxModel.selected.explanation} property={propertyLookup.state?.address === address.trim() ? propertyLookup.state.data : undefined} propertyDraft={propertyDraft} />}
           <div className="deal-metrics-workspace">
             <PurchasePriceExplorer price={fields.purchasePrice} arv={Number(fields.arv)} target={targetPrice} onChange={value => update("purchasePrice", value)} />
             {result && <DealStrength result={result} arv={Number(fields.arv)} monthlyRent={Number(fields.monthlyRent)} />}
           </div>
       </section>}
         <section className="panel primary-estimates" aria-labelledby="primary-estimates-heading">
-          <p className="eyebrow input-category">02 · YOUR INPUTS</p>
-          <div className="step-heading"><div><h2 id="primary-estimates-heading" ref={inputsHeading} tabIndex={-1}>Your primary estimates</h2><p>Your inputs: purchase, renovation, finished value, and rent.</p></div></div>
-          <AddressAutocomplete value={address} onChange={changeAddress} />
+          <p className="eyebrow input-category section-kicker">{showResults ? "02" : "01"} · YOUR INPUTS</p>
+          <div className="step-heading"><div><h2 id="primary-estimates-heading" ref={inputsHeading} tabIndex={-1}>Your primary estimates</h2></div></div>
+          <AddressAutocomplete value={address} onChange={changeAddress} onCommit={next => { void propertyLookup.commit(next); }} />
+          <PropertyLookupDetails state={propertyLookup.state?.address === address.trim() ? propertyLookup.state : null} currentRent={fields.monthlyRent}
+            draft={propertyDraft} onChange={setPropertyDraft} onReset={() => setPropertyDraft(emptyPropertyDetails())}
+            onRetry={() => { void propertyLookup.commit(address, true); }}
+            onUseRent={value => { manualRent.current = false; automaticRent.current = value; setFields(previous => ({ ...previous, monthlyRent: value })); setShowResults(false); setIsEdited(true); setSaveMessage(""); }} />
           {renderFields([...projectFields.filter(field => ["purchasePrice", "rehabBudget", "arv"].includes(field.key)),operatingFields[0]])}
           <PropertyTaxFields model={taxModel} projectedRent={fields.monthlyRent} />
         <div className="form-actions primary-actions"><button type="submit" className="button">Calculate deal <span aria-hidden="true">→</span></button><button type="button" className="button secondary" onClick={() => {
           resetEstimates(); setFields(initialDealFields(asOfDate)); setAddress(""); setIsEdited(false); setShowResults(false); setClosingAdjustments({ ...DEFAULT_CLOSING_ADJUSTMENTS }); setReferenceLoaded(false);
         setPurchaseAdjustments({ ...DEFAULT_PURCHASE_ADJUSTMENTS }); setPurchaseReferenceLoaded(false);
         }}>Clear inputs</button></div>
-          <p className="note">Calculations use the county rental estimate or your annual-tax override. Current county taxes are historical reference only.</p>
         </section>
-      <section className="derived-section" aria-labelledby="derived-values-heading">
+      <section className="panel derived-section" aria-labelledby="derived-values-heading">
         <header className="calculator-section-heading">
-          <p className="eyebrow">03 · ESTIMATES & BREAKDOWN</p>
+          <p className="eyebrow section-kicker">{showResults ? "03" : "02"} · ESTIMATES & BREAKDOWN</p>
           <h2 id="derived-values-heading">Derived values & assumptions</h2>
           <p>Estimated costs, financing assumptions, and the detailed results calculated from your inputs.</p>
         </header>
@@ -220,7 +244,7 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
             <p>Prefilled from your project inputs and reference documents. Review and adjust as needed.</p>
           </header>
         <section className="panel" aria-labelledby="inferred-costs-heading">
-          <div className="step-heading"><span>01</span><div><h2 id="inferred-costs-heading">Upfront project costs</h2><p>One-time costs added to your purchase and rehab budget.</p></div></div>
+          <div className="step-heading"><span>A</span><div><h3 id="inferred-costs-heading">Upfront project costs</h3><p>One-time costs added to your purchase and rehab budget.</p></div></div>
           {renderFields(projectFields.filter(field => ["unexpectedConstructionCosts", "holdingCosts"].includes(field.key)))}
           <PurchaseCostEstimate estimate={purchasePreview} adjustments={purchaseAdjustments}
             onChange={(key, value) => { setPurchaseAdjustments(previous => ({ ...previous, [key]: value })); setShowResults(false); setIsEdited(true); }}
@@ -234,13 +258,13 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
           {purchaseError && <p role="alert" className="error">{purchaseError}</p>}
         </section>
         <section className="panel">
-          <div className="step-heading"><span>02</span><div><h2>Ongoing ownership costs</h2><p>Insurance, management, and reserves used to estimate monthly cash flow.</p></div></div>
+          <div className="step-heading"><span>B</span><div><h3>Ongoing ownership costs</h3><p>Insurance, management, and reserves used to estimate monthly cash flow.</p></div></div>
           {renderFields(operatingFields.filter(field => !["monthlyRent", "annualPropertyTaxes"].includes(field.key)))}
-          <label className="field flood-field"><span>Flood insurance / year</span><div className="input-wrap"><input type="number" inputMode="decimal" min={0} max={1000000000} step="0.01" value={closingAdjustments.annualFloodInsurance} onChange={event => updateAdjustment("annualFloodInsurance", Number(event.target.value))} /><span>$</span></div><small className="field-hint">Enter $0 if not required. Updates the annual premium, monthly expense, and three-month escrow.</small></label>
-          <details className="extra-reserves"><summary>Additional reserves <span>Optional · beyond the spreadsheet</span></summary><p className="note">These start at 0%. Avoid double-counting items already covered by your CapEx reserve.</p>{renderFields(extraFields)}</details>
+          <label className="field flood-field"><span><ExplainedValue label="Flood insurance / year" explanation={<p>Enter $0 if not required. Updates the annual premium, monthly expense, and three-month escrow.</p>} /></span><div className="input-wrap"><input type="number" inputMode="decimal" min={0} max={1000000000} step="0.01" value={closingAdjustments.annualFloodInsurance} onChange={event => updateAdjustment("annualFloodInsurance", Number(event.target.value))} /><span>$</span></div></label>
+          <details className="extra-reserves"><summary>Additional reserves <span>Optional · beyond the spreadsheet</span></summary>{renderFields(extraFields)}</details>
         </section>
         <section className="panel">
-          <div className="step-heading"><span>03</span><div><h2>Refinance costs & terms</h2><p>Estimated loan terms and the cost of recovering your investment.</p></div></div>
+          <div className="step-heading"><span>C</span><div><h3>Refinance costs & terms</h3><p>Estimated loan terms and the cost of recovering your investment.</p></div></div>
           {renderFields(loanFields)}
           {renderFields(feeFields.filter(field => field.key === "closingDate"))}
           <button type="button" className="text-link" onClick={() => {
@@ -253,14 +277,14 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
           {closingPreviewError && <p role="alert" className="error">{closingPreviewError}</p>}
           <details className="closing-adjustments"><summary>Lender-specific adjustments <small>Credits, payoffs & payment timing</small></summary>
             <p className="note">These cannot be reliably estimated from a single closing. Enter confirmed amounts; credits and the aggregate adjustment start at zero.</p>
-            <label className="field title-quote-field"><span>Lender title-policy premium estimate</span><div className="input-wrap"><input type="number" inputMode="decimal" step="0.01" min={0} max={1000000000} value={closingAdjustments.quotedTitlePremium ?? 195} onChange={event => updateAdjustment("quotedTitlePremium", event.target.value === "" ? null : Number(event.target.value))} /><span>$</span></div><small className="field-hint">Starts at the $195 closing-document reference. Editable; confirm a quote for this deal’s loan amount.</small></label>
+            <label className="field title-quote-field"><span><ExplainedValue label="Lender title-policy premium estimate" explanation={<p>Starts at the $195 closing-document reference. Editable; confirm a quote for this deal’s loan amount.</p>} /></span><div className="input-wrap"><input type="number" inputMode="decimal" step="0.01" min={0} max={1000000000} value={closingAdjustments.quotedTitlePremium ?? 195} onChange={event => updateAdjustment("quotedTitlePremium", event.target.value === "" ? null : Number(event.target.value))} /><span>$</span></div></label>
             <div className="input-grid">{([
               ["aggregateEscrowAdjustment", "Aggregate escrow adjustment", "Signed amount; negative reduces the deposit."],
               ["brokerCredit", "Broker credit", "Reduces cash needed at closing."],
               ["lenderCredit", "Lender credit", "Separate from lender-paid broker compensation."],
               ["existingLoanPayoff", "Existing loan payoff", "Reduces the actual cash returned to you."],
               ["additionalClosingCosts", "Additional quoted charges", "Only amounts not already itemized above."],
-            ] as const).map(([key, label, hint]) => <label className="field" key={key}><span>{label}</span><div className="input-wrap"><input type="number" inputMode="decimal" step="0.01" min={key === "aggregateEscrowAdjustment" ? undefined : 0} max={1000000000} value={closingAdjustments[key]} onChange={event => updateAdjustment(key, Number(event.target.value))} /><span>$</span></div><small className="field-hint">{hint}</small></label>)}</div>
+            ] as const).map(([key, label, hint]) => <label className="field" key={key}><span><ExplainedValue label={label} explanation={<p>{hint}</p>} /></span><div className="input-wrap"><input type="number" inputMode="decimal" step="0.01" min={key === "aggregateEscrowAdjustment" ? undefined : 0} max={1000000000} value={closingAdjustments[key]} onChange={event => updateAdjustment(key, Number(event.target.value))} /><span>$</span></div></label>)}</div>
             <label className="checkbox-field"><input type="checkbox" checked={closingAdjustments.appraisalPaidBeforeClosing} onChange={event => updateAdjustment("appraisalPaidBeforeClosing", event.target.checked)} />Appraisal + AMC paid before closing</label>
             <label className="checkbox-field"><input type="checkbox" checked={closingAdjustments.floodPremiumPaidBeforeClosing} onChange={event => updateAdjustment("floodPremiumPaidBeforeClosing", event.target.checked)} />Annual flood premium paid before closing</label>
           </details>

@@ -36,3 +36,18 @@ test('sharing without an address or rateable project preserves unavailable metri
   assert.ok(text.includes('Capital recovered: N/A'));
   assert.ok(text.includes('Cash-on-cash return: N/A'));
 });
+
+test('share text includes the current fetched property details and rent source', () => {
+  const result=calculateDeal(spreadsheetExample);
+  const text=formatDealShare('123 Main St',spreadsheetExample,result,'Manual taxes',{source:'RentCast',address:'123 Main St',fetchedAt:'2026-11-06T12:00:00.000Z',facts:[{label:'Living area',value:'1,250 sq ft'}],rent:{monthly:1400,low:1200,high:1600,perUnit:false,comparableCount:5},warnings:[]});
+  assert.ok(text.includes('Living area: 1,250 sq ft'));
+  assert.ok(text.includes('RentCast monthly rent estimate: $1,400.00'));
+  assert.ok(text.includes('Retrieved: 2026-11-06'));
+});
+
+test('shared proposed layout uses corrected current values and keeps original provider facts attributed',()=>{
+  const property={source:'RentCast' as const,address:'123 Main St',fetchedAt:'2026-11-06T12:00:00.000Z',facts:[{label:'Bedrooms',value:'3'},{label:'Bathrooms',value:'1.5'},{label:'Living area',value:'1,250 sq ft'}],rent:null,warnings:[]};
+  const draft={overrides:{Bedrooms:'4'},additions:{bedrooms:'1',bathrooms:'0.5',squareFeet:'350'}};
+  const text=formatDealShare('123 Main St',spreadsheetExample,calculateDeal(spreadsheetExample),'Manual taxes',property,draft);
+  for(const value of ['PROPERTY DETAILS — RENTCAST','Bedrooms: 3','YOUR PROPERTY CORRECTIONS','Bedrooms: 4','Additional bedrooms: 1','Proposed bedrooms: 5','Proposed bathrooms: 2','Proposed living area: 1,600 sq ft']) assert.ok(text.includes(value),value);
+});

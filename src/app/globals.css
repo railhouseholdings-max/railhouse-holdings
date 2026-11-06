@@ -158,3 +158,49 @@
 }
 
 .share-deal-controls{margin:0 0 20px}.share-deal-controls .button{min-height:44px}.share-deal-controls .button:disabled{opacity:.65;cursor:wait}.share-deal-controls .error{margin-top:10px}
+
+.rentcast-details{margin:0 0 24px;padding:20px;border:1px solid #d3deca;border-radius:8px;background:#f4f7ef}
+.rentcast-details header h3{font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+.property-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:20px 0}
+.property-facts dt{font-size:10px;color:var(--muted);line-height:1.6}
+.property-facts dd{font-size:14px;font-weight:600;margin:5px 0 0;overflow-wrap:anywhere}
+.rentcast-rent{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #d3deca;padding-top:16px}
+.rentcast-rent span,.rentcast-rent small{display:block;font-size:11px;color:var(--muted);line-height:1.7}
+.rentcast-rent strong{display:block;font-size:25px;margin:6px 0}
+.rentcast-details>.note{margin-top:12px}
+.property-more-details summary{padding:16px 0;min-height:44px;cursor:pointer;font-size:12px}
+@media(max-width:767px){.rentcast-details{padding:16px 12px}.property-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.rentcast-rent{align-items:flex-start;flex-direction:column}.rentcast-rent .button{width:100%}}
+
+.property-details-section{padding:0}
+.property-details-section>summary{padding:17px 18px;min-height:60px;cursor:pointer;font-size:14px;font-weight:600;color:var(--green)}
+.property-details-section>summary>small{display:block;margin:6px 0 0 17px;font-size:10px;font-weight:400;line-height:1.6;color:var(--muted)}
+.property-details-body{padding:0 18px 20px;border-top:1px solid #d3deca}
+.property-details-body>h3{margin:20px 0 16px}
+.property-details-body>.note{margin-top:12px}
+.current-property-fields .field>span{min-height:0}
+.property-additions{margin-top:24px;padding:18px 14px;border:1px solid #d3deca;border-radius:7px;background:#fff}
+.property-additions>.note{margin-top:9px}
+.property-additions>.input-grid{margin-top:18px}
+.proposed-property-heading{margin-top:20px}
+.proposed-property-totals{margin:14px 0 0;grid-template-columns:repeat(3,minmax(0,1fr))}
+.proposed-property-totals dd{font-size:16px;color:var(--green)}
+.property-other-facts{margin:24px 0}
+.property-other-facts>h3{margin-bottom:18px}
+.property-other-facts>.note{margin-top:12px}
+.reset-property-details{margin-top:14px;min-height:44px}
+@media(max-width:767px){.property-details-section{padding:0}.property-details-section>summary{padding:16px 12px}.property-details-body{padding:0 12px 16px}.property-additions{padding:16px 10px}.proposed-property-totals{grid-template-columns:1fr;gap:12px}.proposed-property-totals>div{display:flex;align-items:center;justify-content:space-between;gap:12px}.proposed-property-totals dd{margin:0;text-align:right;font-size:15px}}
+
+/* Calculator hierarchy and field rhythm: labels belong to the control below. */
+.calculator-form .field{gap:5px;align-self:start}
+.calculator-form .field>span,.calculator-form .address-autocomplete>label{min-height:0;line-height:1.45;font-size:12px;font-weight:500}
+.calculator-form .input-grid{align-items:start;row-gap:26px;column-gap:20px}
+.calculator-form .field .explained-label{line-height:1.45}
+.calculator-form .section-kicker{display:block;width:fit-content;max-width:100%;font-size:13px;font-weight:800;letter-spacing:1.2px;line-height:1.5;color:var(--green);background:#eaf0e4;border:1px solid #cad9bf;border-radius:5px;padding:8px 11px;margin-bottom:16px}
+.calculator-form .deal-metrics-section{border:2px solid #a9c1a5;border-top-width:4px}
+.calculator-form .derived-section{padding:24px;border:2px solid #bac9d2;border-top:4px solid #718f9e;border-radius:9px;background:#f3f6f8}
+.derived-section>.calculator-section-heading>.section-kicker{background:#e3ebf0;border-color:#b8cad5;color:#385d70}
+.derived-section .estimated-costs>.panel{border:2px solid #d6ceba;border-top:4px solid #b4a271;background:#fffefa}
+.derived-section .step-heading h3{font-size:19px;font-weight:650;line-height:1.35;margin:0 0 7px}
+.derived-section .step-heading>span{background:#eee7d6;color:#756338;font-size:13px;font-weight:700}
+.derived-section .derived-results>.panel{border:2px solid #c4d1d9;background:#fff}
+@media(max-width:767px){.calculator-form .input-grid{row-gap:24px;column-gap:14px}.calculator-form .section-kicker{font-size:12px;letter-spacing:1px;padding:8px 10px}.calculator-form .derived-section{padding:18px 12px}.derived-section .step-heading h3{font-size:17px}}

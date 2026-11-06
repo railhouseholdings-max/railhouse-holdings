@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { ExplainedValue } from "./calculation-help";
 import type { AddressSuggestion } from "@/domain/address";
 
 const MIN_QUERY_LENGTH = 4;
@@ -70,7 +71,7 @@ export function AddressAutocomplete({ value, onChange, onCommit }: { value: stri
     if (!event.relatedTarget && interactingWithSuggestions.current) return;
     setFocused(false); setActiveIndex(-1); onCommit?.(value);
   }}>
-    <label htmlFor={id}>Property address <small>(for tax lookup)</small></label>
+    <label htmlFor={id}><ExplainedValue label="Property address" explanation={<p>Type at least 4 characters and select a suggestion, or enter a full address with city and state or ZIP. A completed address looks up property details, rent, and taxes. You can always enter an address manually.</p>} /></label>
     <input id={id} value={value} role="combobox" aria-autocomplete="list"
       aria-expanded={expanded && suggestions.length > 0} aria-controls={expanded && suggestions.length > 0 ? listId : undefined}
       aria-activedescendant={expanded && activeIndex >= 0 && suggestions[activeIndex] ? `${id}-option-${activeIndex}` : undefined}
@@ -90,6 +91,7 @@ export function AddressAutocomplete({ value, onChange, onCommit }: { value: stri
         if (event.key === "Enter" && enabled) {
           event.preventDefault();
           if (activeIndex >= 0 && suggestions[activeIndex]) select(suggestions[activeIndex]);
+          else { setDismissedValue(value); onCommit?.(value); }
         }
       }} />
     {expanded && <div className="address-dropdown">
@@ -104,7 +106,7 @@ export function AddressAutocomplete({ value, onChange, onCommit }: { value: stri
       </ul> : <p className="address-message">{status}</p>}
       <div className="address-attribution">Search by <a href="https://photon.komoot.io/" target="_blank" rel="noreferrer">Photon</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a></div>
     </div>}
-    <small id={`${id}-hint`} className="field-hint">Type at least 4 characters. Include a city or ZIP for better matches. You can always enter an address manually.</small>
+    <small id={`${id}-hint`} className="sr-only">Type at least 4 characters. Include a city or ZIP for better matches. You can always enter an address manually.</small>
     <span className="sr-only" role="status" aria-live="polite">{status}</span>
   </div>;
 }
