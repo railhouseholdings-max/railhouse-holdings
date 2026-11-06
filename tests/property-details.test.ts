@@ -34,3 +34,26 @@ test('missing current facts do not turn into invented totals, while blank additi
   draft.additions.bedrooms='-1';assert.equal(proposedPropertyTotals(data,draft).bedrooms,null);
   draft.additions.bedrooms='Infinity';assert.equal(proposedPropertyTotals(data,draft).bedrooms,null);
 });
+
+test('multifamily unit rows start blank and never distribute aggregate provider facts',async()=>{
+  const {propertyUnits,isMultifamilyProperty}=await import('../src/lib/deals/property-details.ts');
+  const multi={...data,facts:[...data.facts.filter(f=>f.label!=='Property type'),{label:'Property type',value:'Multi-Family'},{label:'Units',value:'2'}]};
+  assert.equal(isMultifamilyProperty(multi,emptyPropertyDetails()),true);
+  const units=propertyUnits(multi,emptyPropertyDetails());
+  assert.equal(units.length,2);
+  assert.equal(units[0].bedrooms,'');assert.equal(units[1].monthlyRent,'');
+  assert.deepEqual(propertyUnits(multi,{...emptyPropertyDetails(),units:[]}),[]);
+  assert.equal(isMultifamilyProperty(data,emptyPropertyDetails()),false);
+});
+test('unit additions and total rent handle new units, fractional baths and incomplete inputs',async()=>{
+  const {emptyPropertyUnit,unitProposedTotals,totalUnitRent}=await import('../src/lib/deals/property-details.ts');
+  const unit={...emptyPropertyUnit('one','Unit 1'),bedrooms:'2',bathrooms:'1.5',squareFeet:'900',monthlyRent:'1200',additions:{bedrooms:'1',bathrooms:'0.5',squareFeet:'100'}};
+  const planned={...emptyPropertyUnit('two','New unit','proposed'),monthlyRent:'800'};
+  assert.deepEqual(unitProposedTotals(unit),{bedrooms:3,bathrooms:2,squareFeet:1000});
+  assert.equal(totalUnitRent([unit,planned]),2000);
+  assert.equal(totalUnitRent([unit,{...planned,monthlyRent:''}]),null);
+  assert.equal(totalUnitRent([unit,{...planned,monthlyRent:'0'}]),1200);
+  assert.equal(totalUnitRent([]),null);
+  assert.equal(totalUnitRent([unit,{...planned,monthlyRent:'-1'}]),null);
+  assert.equal(unitProposedTotals(planned).bedrooms,null);
+});

@@ -4,15 +4,14 @@ import { useRef, useState, useSyncExternalStore } from 'react';
 import type { PropertyDetailsDraft } from "@/lib/deals/property-details";
 import type { RentCastLookup } from "@/domain/property-lookup";
 import type { DealInputs } from '@/domain/models';
-import type { calculateDeal } from '@/lib/calculations/deal';
 import { formatDealShare, isMobileShareAvailable } from '@/lib/deals/share';
 
 const subscribe = () => () => {};
 const serverSnapshot = () => false;
 const mobileShareSnapshot = () => isMobileShareAvailable(navigator, window.isSecureContext, typeof navigator.share === 'function');
 
-export function ShareDealButton({ address, input, result, taxExplanation, property, propertyDraft }: {
-  address: string; input: DealInputs; result: ReturnType<typeof calculateDeal>; taxExplanation: string; property?: RentCastLookup; propertyDraft?: PropertyDetailsDraft;
+export function ShareDealButton({ address, input, property, propertyDraft }: {
+  address: string; input: DealInputs; property?: RentCastLookup; propertyDraft?: PropertyDetailsDraft;
 }) {
   const available = useSyncExternalStore(subscribe, mobileShareSnapshot, serverSnapshot);
   const [sharing, setSharing] = useState(false);
@@ -24,7 +23,7 @@ export function ShareDealButton({ address, input, result, taxExplanation, proper
     pending.current = true;
     setSharing(true); setError('');
     try {
-      const data = { title: address.trim() ? `Deal estimate: ${address.trim()}` : 'Railhouse deal estimate', text: formatDealShare(address, input, result, taxExplanation, property, propertyDraft) };
+      const data = { title: address.trim() ? `Deal estimate: ${address.trim()}` : 'Railhouse deal estimate', text: formatDealShare(address, input, property, propertyDraft) };
       if (navigator.canShare && !navigator.canShare(data)) throw new Error('Unsupported share');
       // Keep this in the tap handler: native sharing requires user activation.
       await navigator.share(data);

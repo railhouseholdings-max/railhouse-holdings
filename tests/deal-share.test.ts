@@ -1,10 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { formatDealShare, isMobileShareAvailable } from '../src/lib/deals/share.ts';
-import { calculateDeal } from '../src/lib/calculations/deal.ts';
-import { DEFAULT_CLOSING_ADJUSTMENTS } from '../src/lib/calculations/closing.ts';
 import { spreadsheetExample } from '../src/lib/data/spreadsheet-example.ts';
-import { money } from '../src/lib/format.ts';
+import { emptyPropertyDetails, emptyPropertyUnit } from '../src/lib/deals/property-details.ts';
+import type { RentCastLookup } from '../src/domain/property-lookup.ts';
 
 test('native sharing is restricted to mobile devices with a secure supported browser', () => {
   const iphone = {userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',maxTouchPoints:5};
@@ -19,35 +18,36 @@ test('native sharing is restricted to mobile devices with a secure supported bro
   assert.equal(isMobileShareAvailable(desktop,true,true),false);
   assert.equal(isMobileShareAvailable({...ipadDesktopMode,maxTouchPoints:0},true,true),false);
 });
-test('share text reflects the current price, manual zero taxes, fees, credits and calculated estimates', () => {
-  const input = {...spreadsheetExample,purchasePrice:123456,annualPropertyTaxes:0};
-  const result = calculateDeal(input,{...DEFAULT_CLOSING_ADJUSTMENTS,brokerCredit:400,existingLoanPayoff:50000},{additionalCosts:123,buyerCredits:50});
-  const text = formatDealShare('123 Main Street',input,result,'Manual annual-tax override: $0.00.');
-  for (const expected of ['123 Main Street','Purchase price: $123,456.00','Annual property taxes: $0.00','Manual annual-tax override: $0.00.', 'Broker credit: $400.00','Existing loan payoff: $50,000.00','Additional purchase costs: $123.00','Purchase credits: $50.00',`Monthly cash flow: ${money(result.monthlyCashFlow,true)}`,`Cash to borrower at closing: ${money(result.cashOutProceeds,true)}`,'DEAL METRICS','PRIMARY INPUTS','Interest rate: 6.25%','PROJECT COST ESTIMATES','REFINANCE ESTIMATES','OPERATING ASSUMPTIONS','MONTHLY INCOME & EXPENSES']) assert.ok(text.includes(expected),expected);
-  assert.ok(!text.includes('NaN'));
-  assert.ok(!text.includes('undefined'));
+const property:RentCastLookup={source:'RentCast',address:'123 Main St',fetchedAt:'2026-11-06T12:00:00Z',facts:[{label:'Property type',value:'Single Family'},{label:'Bedrooms',value:'3'},{label:'Bathrooms',value:'1.5'},{label:'Living area',value:'1,250 sq ft'},{label:'Last sale price (historical)',value:'$50,000'}],rent:null,warnings:[]};
+test('share is a concise purchase and property summary with no mortgage or performance information',()=>{
+  const input={...spreadsheetExample,purchasePrice:123456};
+  const text=formatDealShare('123 Main Street',input,property);
+  for(const value of ['123 Main Street','Property type: Single Family','Purchase price: $123,456.00','Rehab estimate: $50,000.00','Estimated monthly rent (whole property): $1,800.00','Estimated ARV: $260,000.00','3 bedrooms · 1.5 bathrooms · 1,250 sq ft']) assert.ok(text.includes(value),value);
+  for(const value of ['REFINANCE','Interest rate','Funding date','Debt coverage','Rating:','Capital recovered','cash flow','Target purchase price','Last sale price','Annual property taxes','Loan term']) assert.ok(!text.includes(value),value);
+  assert.ok(text.length<1000);
 });
-test('sharing without an address or rateable project preserves unavailable metrics', () => {
-  const input = {...spreadsheetExample,purchasePrice:0,rehabBudget:0,holdingCosts:0,unexpectedConstructionCosts:0};
-  const result = calculateDeal(input);
-  const text = formatDealShare('',input,result,'County estimate');
+test('shared layout uses latest edits and identifies planned additions',()=>{
+  const draft={...emptyPropertyDetails(),overrides:{Bedrooms:'4'},additions:{bedrooms:'1',bathrooms:'0.5',squareFeet:'350'}};
+  const text=formatDealShare('123 Main St',spreadsheetExample,property,draft);
+  for(const value of ['4 bedrooms · 1.5 bathrooms · 1,250 sq ft','PROPOSED BUILDING ADDITIONS','+1 bedroom','+0.5 bathrooms','+350 sq ft','5 bedrooms · 2 bathrooms · 1,600 sq ft','do not automatically update rent, ARV, or rehab']) assert.ok(text.includes(value),value);
+  assert.ok(!text.includes('3 bedrooms'));
+});
+test('multifamily summary includes individually entered units, rent and proposed new units',()=>{
+  const unit={...emptyPropertyUnit('a','Unit A'),bedrooms:'2',bathrooms:'1',squareFeet:'800',monthlyRent:'1000',additions:{bedrooms:'1',bathrooms:'0',squareFeet:'100'}};
+  const proposed={...emptyPropertyUnit('b','Garage apartment','proposed'),bedrooms:'0',bathrooms:'1',squareFeet:'400',monthlyRent:'800'};
+  const draft={...emptyPropertyDetails(),overrides:{'Property type':'Multi-Family',Units:'1'},units:[unit,proposed]};
+  const text=formatDealShare('123 Main St',spreadsheetExample,property,draft);
+  for(const value of ['Property type: Multi-Family','UNIT BREAKDOWN','Unit A','2 bedrooms · 1 bathroom · 800 sq ft','Estimated monthly rent: $1,000.00','Proposed layout: 3 bedrooms · 1 bathroom · 900 sq ft','Garage apartment — PROPOSED NEW UNIT','0 bedrooms · 1 bathroom · 400 sq ft','Estimated monthly rent: $800.00','Combined entered unit rent estimates: $1,800.00','Heads up: proposed additions or new units']) assert.ok(text.includes(value),value);
+});
+test('missing facts and missing unit rents are identified without inventing values',()=>{
+  const text=formatDealShare('',spreadsheetExample);
   assert.ok(text.includes('Property address not provided'));
-  assert.ok(text.includes('Rating: Not rated'));
-  assert.ok(text.includes('Capital recovered: N/A'));
-  assert.ok(text.includes('Cash-on-cash return: N/A'));
-});
-
-test('share text includes the current fetched property details and rent source', () => {
-  const result=calculateDeal(spreadsheetExample);
-  const text=formatDealShare('123 Main St',spreadsheetExample,result,'Manual taxes',{source:'RentCast',address:'123 Main St',fetchedAt:'2026-11-06T12:00:00.000Z',facts:[{label:'Living area',value:'1,250 sq ft'}],rent:{monthly:1400,low:1200,high:1600,perUnit:false,comparableCount:5},warnings:[]});
-  assert.ok(text.includes('Living area: 1,250 sq ft'));
-  assert.ok(text.includes('RentCast monthly rent estimate: $1,400.00'));
-  assert.ok(text.includes('Retrieved: 2026-11-06'));
-});
-
-test('shared proposed layout uses corrected current values and keeps original provider facts attributed',()=>{
-  const property={source:'RentCast' as const,address:'123 Main St',fetchedAt:'2026-11-06T12:00:00.000Z',facts:[{label:'Bedrooms',value:'3'},{label:'Bathrooms',value:'1.5'},{label:'Living area',value:'1,250 sq ft'}],rent:null,warnings:[]};
-  const draft={overrides:{Bedrooms:'4'},additions:{bedrooms:'1',bathrooms:'0.5',squareFeet:'350'}};
-  const text=formatDealShare('123 Main St',spreadsheetExample,calculateDeal(spreadsheetExample),'Manual taxes',property,draft);
-  for(const value of ['PROPERTY DETAILS — RENTCAST','Bedrooms: 3','YOUR PROPERTY CORRECTIONS','Bedrooms: 4','Additional bedrooms: 1','Proposed bedrooms: 5','Proposed bathrooms: 2','Proposed living area: 1,600 sq ft']) assert.ok(text.includes(value),value);
+  assert.ok(text.includes('Property type: Not provided'));
+  assert.ok(!text.includes('PROPOSED'));
+  const draft={...emptyPropertyDetails(),overrides:{'Property type':'Duplex',Units:'2'}};
+  const multi=formatDealShare('123 Main St',spreadsheetExample,undefined,draft);
+  assert.ok(multi.includes('Unit 1'));
+  assert.ok(multi.includes('Estimated monthly rent: Not provided'));
+  assert.ok(!multi.includes('Combined entered unit rent estimates'));
+  assert.ok(!multi.includes('NaN'));
 });
