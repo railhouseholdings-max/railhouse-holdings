@@ -11,7 +11,7 @@ export function OwnedPropertyEditor({id,revision,initial}:{id:string;revision:nu
     try{
       const response=await fetch('/api/properties',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,revision,values})});
       const body=await response.json();if(!response.ok)throw new Error(body.error??'Could not save property.');
-      setEditing(false);setMessage('Saved and locked. Dashboard and portfolio now use these records.');router.refresh();
+      setEditing(false);setMessage('Saved and locked. My Portfolio now uses these records.');router.refresh();
     }catch(error){setMessage(error instanceof Error?error.message:'Could not save property.');}finally{setBusy(false);}
   };
   return <section className="panel owned-property-editor"><h2>Recorded property values</h2><p className="note">{editing?'Editing unlocked. Blank means not recorded. Review changes before saving.':'Locked to prevent accidental changes. Use Edit property at the bottom to unlock these fields.'} Target rent is a projection; only enter signed lease rent when supported by a lease.</p>
