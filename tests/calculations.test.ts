@@ -114,7 +114,7 @@ test("invalid financial inputs and invalid calendar dates are rejected", () => {
 });
 
 test("empty portfolio has zero totals and undefined return", () => {
-  assert.deepEqual(portfolioMetrics([]), { count: 0, value: 0, debt: 0, equity: 0, rent: 0, cashFlow: 0, cashInvested: 0, cashLeft: 0, cashOnCashPercent: null });
+  assert.deepEqual(portfolioMetrics([]), { count: 0, value: 0, debt: 0, equity: 0, rent: 0, cashFlow: 0, cashInvested: 0, cashLeft: 0, cashOnCashPercent: null,usesTargetRent:false });
 });
 test("property economics and portfolio aggregation handle an unlevered asset", () => {
   const p = { loan: null, operations: { lease: { monthlyRent: 1000 }, managementPercent: 10, vacancyPercent: 5, maintenancePercent: 5, annualTaxes: 1200, annualInsurance: 600, monthlyOtherExpenses: 50 }, valuation: { currentEstimatedValue: 100000 }, financials: { cashLeftInDeal: 0, totalCashInvested: 80000, realizedCashFlow: 5000, realizedSaleProceeds: 0 } } as Property;

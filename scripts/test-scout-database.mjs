@@ -27,6 +27,7 @@ await db.exec(`create schema storage;create table storage.buckets(id text primar
 await db.exec(await readFile(root+'supabase/migrations/202611090004_property_photo_storage.sql','utf8'));
 await db.exec(await readFile(root+'supabase/migrations/202611090005_feed_presentation.sql','utf8'));
 await db.exec(await readFile(root+'supabase/migrations/202611090006_property_ownership.sql','utf8'));
+await db.exec(await readFile(root+'supabase/migrations/202611090007_property_actuals.sql','utf8'));
 console.log('Workspace, Scout, Google Sheets, read-marker and private-photo-storage migrations executed; legacy analysis backfilled.');
 await db.exec(`set role authenticated;set request.jwt.claim.sub='11111111-1111-4111-8111-111111111111';`);
 const keys=(await db.query(`select private.property_key('2221 Eby Avenue, Fort Wayne, IN 46802') a,private.property_key('2221 Eby Ave, Fort Wayne, IN') b`)).rows[0];assert.equal(keys.a,keys.b);
@@ -100,9 +101,21 @@ assert.deepEqual((await db.query('select lifecycle,ownership from public.propert
 await db.query('select public.scout_finish($1,$2,$3)',[ownedImport.id,{status:'succeeded'},new Date().toISOString()]);
 await db.exec('set role authenticated;');
 console.log('Eby ownership, purchase deduplication, stale revisions, idempotent retries and import preservation verified.');
+const {validateOwnedValues}=await import(pathToFileURL(root+'src/lib/persistence/owned-fields.ts').href);
+const actualValues={'property.address':queueListing.address,'property.city':'Fort Wayne','property.state':'IN','property.zip':'46802','property.status':'Owned','property.beds':3,'property.baths':1,'operations.target_monthly_rent':1200,'operations.management_percent':10,'operations.vacancy_percent':0,'operations.maintenance_percent':0,'operations.annual_taxes':1200,'operations.annual_insurance':600,'operations.monthly_other_expenses':50,'loan.lender':'SYNTHETIC lender','loan.original_amount':100000,'loan.balance':100000,'loan.balance_as_of':'2026-01-01','loan.monthly_principal_and_interest':600,'valuation.appraised_value':150000,'valuation.current_estimated_value':150000,'valuation.as_of_date':'2026-01-01','finance.purchase_price':50000};
+const actualRevision=(await db.query('select details_revision from public.properties where id=$1',[promoted.id])).rows[0].details_revision;
+const actualSaved=(await db.query('select public.save_owned_property($1,$2,$3) result',[promoted.id,actualRevision,validateOwnedValues(actualValues)])).rows[0].result;
+assert.equal(Number(actualSaved.revision),Number(actualRevision)+1);
+assert.equal((await db.query('select acquisition_date from public.property_financials where property_id=$1',[promoted.id])).rows[0].acquisition_date,null);
+assert.equal((await db.query('select count(*)::int n from public.property_leases where property_id=$1',[promoted.id])).rows[0].n,0);
+assert.equal((await db.query('select count(*)::int n from public.property_actuals_history where property_id=$1',[promoted.id])).rows[0].n,1);
+await assert.rejects(()=>db.query('select public.save_owned_property($1,$2,$3)',[promoted.id,actualRevision,validateOwnedValues(actualValues)]),/another session/);
+console.log('Partial actuals saved atomically without a fabricated purchase date or lease; audit and stale-revision checks passed.');
+
 await db.exec(`set request.jwt.claim.sub='33333333-3333-4333-8333-333333333333';`);
 assert.equal((await db.query('select count(*)::int n from storage.objects')).rows[0].n,0);
 await assert.rejects(()=>db.query('select public.purchase_deal($1,$2,$3,$4)',[purchaseDeal.id,purchaseDeal.revision,47000,'2026-01-01']),/Owner access required/);
+await assert.rejects(()=>db.query('select public.save_owned_property($1,$2,$3)',[promoted.id,actualSaved.revision,validateOwnedValues(actualValues)]),/Owner access required/);
 console.log('Private image bucket and owner-only Storage read policy verified.');
 await db.exec('set role anon;');
 try{await db.query("select public.scout_begin('unauthorized')");throw new Error('Anonymous Scout mutation allowed');}catch(e){if(!String(e).includes('permission denied'))throw e;}

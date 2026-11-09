@@ -16,14 +16,14 @@ function databaseRow(p:Property) {
 test('normalized property records preserve every original domain value and portfolio calculation',()=>{
   for(const p of mockProperties) {
     const restored=fromPropertyRow(databaseRow(p));
-    assert.deepEqual(restored,p);
+    assert.deepEqual(restored,{...p,revision:0,evidence:{},operations:{...p.operations,targetMonthlyRent:null},loan:p.loan?{...p.loan,balanceAsOf:null}:null});
     assert.deepEqual(propertyMetrics(restored),propertyMetrics(p));
   }
 });
 test('missing/ambiguous current records fail without silently zeroing portfolio values',()=>{
   const row=databaseRow(mockProperties[0]);
-  assert.throws(()=>fromPropertyRow({...row,property_valuations:[]}));
+  assert.equal(fromPropertyRow({...row,property_valuations:[]}).valuation.currentEstimatedValue,null);
   assert.throws(()=>fromPropertyRow({...row,property_loans:[...row.property_loans,...row.property_loans]}));
   assert.throws(()=>fromPropertyRow({...row,property_financials:null}));
-  assert.throws(()=>fromPropertyRow({...row,baths:null}));
+  assert.equal(fromPropertyRow({...row,baths:null}).baths,null);
 });

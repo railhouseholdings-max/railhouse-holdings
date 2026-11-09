@@ -263,3 +263,4 @@
 .purchase-deal{margin-top:22px;padding-top:22px;border-top:1px solid var(--line)}
 .purchase-deal>.input-grid{margin-top:18px}
 @media(max-width:600px){.property-tabs{width:100%}.property-tabs a{flex:1;padding:11px 12px}.purchase-deal .feed-card-actions .button{width:100%;white-space:normal}}
+.owned-fields{border:0;margin:0;padding:0;min-width:0}.owned-fields:disabled input,.owned-fields:disabled select,.owned-fields:disabled textarea{opacity:1;color:#415047;background:#f3f5ef;cursor:default}.owned-property-editor details{border-bottom:1px solid var(--line);padding:12px 0}.owned-property-editor summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600}.owned-property-editor .input-grid{margin:16px 0}.owned-property-editor>.feed-card-actions{margin-top:24px}.calculator-lock-fields{display:contents}.owned-edit-control{margin-top:24px}

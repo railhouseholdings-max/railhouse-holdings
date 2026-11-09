@@ -94,6 +94,8 @@ function InputFields({ definitions, values, onChange, trailing }: {
 
 export function DealCalculator({ initialDeal, initialProperty, asOfDate, cloudEnabled = false }: { initialDeal?: DealAnalysis | null; initialProperty?:FeedProperty|null; asOfDate: string; cloudEnabled?: boolean }) {
   const router = useRouter();
+  const [ownedEditing,setOwnedEditing]=useState(false);
+  const ownedLocked=initialProperty?.lifecycle==='owned'&&!ownedEditing;
   const resultsHeading = useRef<HTMLHeadingElement>(null);
   const inputsHeading = useRef<HTMLHeadingElement>(null);
   const [calculationRequest, setCalculationRequest] = useState(0);
@@ -191,7 +193,7 @@ export function DealCalculator({ initialDeal, initialProperty, asOfDate, cloudEn
     setIsEdited(true);
   };
   const saveDeal = async ():Promise<{id:string;revision:number}|undefined> => {
-    if (!calculatedInput || !result || saveInFlight.current) return;
+    if (ownedLocked || !calculatedInput || !result || saveInFlight.current) return;
     saveInFlight.current=true;
     const payload: SaveDealRequest = {propertyDetails:{draft:propertyDraft,lookup:propertyLookup.state?.address===address.trim()?propertyLookup.state.data:undefined},expectedPropertyRevision:propertyRevision,id:savedRecord?.id ?? null,expectedRevision:savedRecord?.revision ?? null,address,status:initialDeal?.status ?? "Reviewing",inputs:calculatedInput,closingAdjustments,purchaseAdjustments,
       taxAssumptions:{parcelId:taxModel.parcelId,payableYear:Number(taxModel.payableYear),annualOverride:taxModel.override.trim() === "" ? null : Number(taxModel.override)}};
@@ -216,7 +218,7 @@ export function DealCalculator({ initialDeal, initialProperty, asOfDate, cloudEn
     {taxModel.warning && <p className="notice tax-warning" role="alert">{taxModel.warning}</p>}
     {referenceLoaded && <p className="notice">{isEdited ? "Editing the closing-document reference. Calculated amounts reflect your current inputs. " : ""}Closing-document loan terms loaded: $113,250 loan, 6.25%, 30 years, funding June 8, 2026. Project costs and rent are still your inputs. The source closing reported $105,833.63 cash to borrower. This analysis uses the selected county rental estimate or manual override; closing totals may differ from the historical reference.</p>}
     {purchaseReferenceLoaded && <p className="notice">Purchase statement reference loaded: December 19, 2025 · $80,000 purchase, $50,000 estimated rehab, and $314 purchase closing fees. Source total: $130,314. Current results use any edits you make; other assumptions remain your inputs.</p>}
-    <form onSubmit={event => { event.preventDefault(); setShowResults(true); setCalculationRequest(request => request + 1); if(cloudEnabled)void saveDeal(); }} className="calculator-form calculator-sections">
+    <form onSubmit={event => { event.preventDefault(); setShowResults(true); setCalculationRequest(request => request + 1); if(cloudEnabled)void saveDeal(); }} className="calculator-form calculator-sections"><fieldset disabled={ownedLocked} className="owned-fields calculator-lock-fields">
       {showResults && <section className="panel results deal-metrics-section" aria-labelledby="deal-metrics-heading">
           <p className="eyebrow section-kicker">01 · DEAL METRICS</p><h2 id="deal-metrics-heading" ref={resultsHeading} tabIndex={-1} className="results-heading">{result ? "Deal metrics & rating" : "A clear picture, before you buy."}</h2>
           <p className="muted result-description">{result ? address || "Your analysis" : "Enter the four project numbers, then calculate to see cash flow and capital recovery."}</p>
@@ -352,6 +354,7 @@ export function DealCalculator({ initialDeal, initialProperty, asOfDate, cloudEn
           </div>
         </div>
       </section>
-    </form>
+    </fieldset></form>
+    {initialProperty?.lifecycle==='owned'&&<div className="panel owned-edit-control"><p className="note">Purchased property: analysis inputs are locked to prevent accidental edits. These projections are separate from the recorded actuals in My Properties.</p><button type="button" className="button secondary" onClick={()=>{setOwnedEditing(!ownedEditing);if(ownedEditing)router.refresh();}}>{ownedEditing?'Lock analysis inputs':'Edit analysis inputs'}</button></div>}
   </>;
 }
