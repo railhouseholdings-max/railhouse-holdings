@@ -1,3 +1,4 @@
+import { listingPhotoUrl } from '../deals/listing-photo.ts';
 import type { ListingStatus, ScoutEvaluation, ScoutListing, ScoutRecommendation } from '../../domain/scout.ts';
 import type { SheetGrid } from './client.ts';
 import { propertyIdentity } from '../scout/identity.ts';
@@ -54,8 +55,12 @@ export function normalizeSheet(grid:SheetGrid):{rows:ImportedSheetRow[];errors:s
       const linkIndex=header.findIndex(h=>['listingurl','listinglink','url'].includes(key(h))),addressIndex=header.findIndex(h=>key(h)==='address');
       const suppliedLink=grid.hyperlinks[index]?.[linkIndex]||get('Listing URL','Listing Link')||grid.hyperlinks[index]?.[addressIndex]||'';
       const listingUrl=url(suppliedLink);if(suppliedLink&&!listingUrl)rowWarnings.push('Listing URL was not a usable HTTPS link; original text retained.');
+      const photoIndex=header.findIndex(h=>['photourl','imageurl','listingphotourl','mainphotourl'].includes(key(h)));
+      const suppliedPhoto=grid.hyperlinks[index]?.[photoIndex]||get('Photo URL','Image URL','Listing Photo URL','Main Photo URL');
+      const photoUrl=listingPhotoUrl(suppliedPhoto);
+      if(suppliedPhoto&&!photoUrl)rowWarnings.push('Photo URL was not a usable public HTTPS image link; source text retained.');
       const listing:ScoutListing={provider:'Google Sheets',sourceId:`${grid.spreadsheetId}:${grid.sheetId}:${propertyIdentity(address)}`,address,city,state,zip,
-        latitude:null,longitude:null,propertyType:get('Property Type')||null,units:nonnegative('Units'),bedrooms:nonnegative('Beds'),bathrooms:nonnegative('Baths'),squareFeet:nonnegative('Sq Ft'),lotSquareFeet:null,yearBuilt:nonnegative('Year Built'),price:nonnegative('List Price'),listedAt:sheetDate(get('Listing Date')),lastSeenAt:sourceUpdatedAt,daysOnMarket:nonnegative('Days on Market'),status,checkedAt:grid.fetchedAt,url:listingUrl,description:null,photos:[],conflicts:[],sourceReference:`https://docs.google.com/spreadsheets/d/${grid.spreadsheetId}/edit#gid=${grid.sheetId}&range=A${index+1}`};
+        latitude:null,longitude:null,propertyType:get('Property Type')||null,units:nonnegative('Units'),bedrooms:nonnegative('Beds'),bathrooms:nonnegative('Baths'),squareFeet:nonnegative('Sq Ft'),lotSquareFeet:null,yearBuilt:nonnegative('Year Built'),price:nonnegative('List Price'),listedAt:sheetDate(get('Listing Date')),lastSeenAt:sourceUpdatedAt,daysOnMarket:nonnegative('Days on Market'),status,checkedAt:grid.fetchedAt,url:listingUrl,description:null,photos:photoUrl?[{url:photoUrl,source:get('Photo Credit','Photo Source')||'Listing photo supplied in Google Sheets',licensed:false}]:[],conflicts:[],sourceReference:`https://docs.google.com/spreadsheets/d/${grid.spreadsheetId}/edit#gid=${grid.sheetId}&range=A${index+1}`};
       const estimates={arvLow:nonnegative('ARV Low'),arvBase:nonnegative('ARV Base'),arvHigh:nonnegative('ARV High'),rehabLow:nonnegative('Rehab Low'),rehabBase:nonnegative('Rehab Base'),rehabHigh:nonnegative('Rehab High'),rentLow:nonnegative('Rent Low / mo'),rentBase:nonnegative('Rent Base / mo'),rentHigh:nonnegative('Rent High / mo'),rentBasis:'total' as const};
       for(const [low,base,high,label] of [[estimates.arvLow,estimates.arvBase,estimates.arvHigh,'ARV'],[estimates.rehabLow,estimates.rehabBase,estimates.rehabHigh,'Rehab'],[estimates.rentLow,estimates.rentBase,estimates.rentHigh,'Rent']] as const)if((low!==null&&base!==null&&low>base)||(base!==null&&high!==null&&base>high))rowWarnings.push(`${label} range is not ordered; source values retained for review.`);
       const score=n('Deal Score');if(score!==null&&(score<0||score>100))throw new Error('Deal Score must be between 0 and 100.');

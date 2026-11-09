@@ -1,3 +1,4 @@
+import { createPhotoArchiver } from '@/lib/photos/archive';
 import { timingSafeEqual } from 'node:crypto';
 import { cloudConfig, dataMode, UUID_PATTERN } from '@/lib/config/cloud';
 import { ownerSession } from '@/lib/cloud/session';
@@ -24,7 +25,7 @@ async function execute(key:string) {
   let active:ScoutRun|null=null;const signal=AbortSignal.timeout(240000);
   const store={...base,begin:async(key:string,now:string)=>{active=await base.begin(key,now);return active;}};
   const fetcher=(async(...args:Parameters<typeof fetch>)=>{if(active)active.requests++;return fetch(...args);}) as typeof fetch;
-  const run=await syncSheetToFeed({store,key,now:()=>new Date().toISOString(),signal,read:()=>readScoutSheet({credentialJson:process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON??'',spreadsheetId:process.env.SCOUT_GOOGLE_SHEET_ID,sheetId:process.env.SCOUT_GOOGLE_SHEET_GID===undefined?0:Number(process.env.SCOUT_GOOGLE_SHEET_GID),signal,fetcher})});
+  const run=await syncSheetToFeed({store,key,now:()=>new Date().toISOString(),signal,archivePhoto:createPhotoArchiver({config,secret:process.env.SCOUT_SUPABASE_SECRET_KEY,fetcher}),read:()=>readScoutSheet({credentialJson:process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON??'',spreadsheetId:process.env.SCOUT_GOOGLE_SHEET_ID,sheetId:process.env.SCOUT_GOOGLE_SHEET_GID===undefined?0:Number(process.env.SCOUT_GOOGLE_SHEET_GID),signal,fetcher})});
   if(run?.status==='failed')return Response.json({run,error:run.errors[0]??'Google Sheets import failed.'},{status:502,headers});
   return Response.json(run?{run}:{skipped:true,reason:'This run already exists or another run is active.'},{headers});
 }
@@ -41,6 +42,11 @@ export async function POST(request:Request) {
   try {
     const raw=await request.text();if(raw.length>16000)return Response.json({error:'Request too large.'},{status:413,headers});
     const body=JSON.parse(raw);
+    if(body.operation==='view'){
+      if(!UUID_PATTERN.test(body.propertyId))throw new Error('Invalid property ID.');
+      await restRequest(config,session,`properties?id=eq.${body.propertyId}&first_viewed_at=is.null`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({first_viewed_at:new Date().toISOString()})});
+      return Response.json({viewed:true},{headers});
+    }
     if(body.operation==='review'){
       if(!UUID_PATTERN.test(body.propertyId)||!Number.isSafeInteger(body.revision)||body.revision<0)throw new Error('Invalid property/revision.');
       const review=validatePropertyReview(body.review,new Date().toISOString());

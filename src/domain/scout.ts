@@ -3,6 +3,10 @@ import type { ArvInput, ArvResult } from './arv.ts';
 import type { RentCastLookup } from './property-lookup.ts';
 export const SCOUT_CITIES=['Fort Wayne','New Haven','Huntertown','Leo-Cedarville','Grabill','Woodburn','Monroeville','Roanoke','Auburn'] as const;
 export type ListingStatus='Active'|'Pending'|'Contingent'|'Sold'|'Off Market'|'Inactive'|'Unknown';
+export interface PropertyPhoto {
+  url:string;source:string;licensed:boolean;
+  storagePath?:string;sha256?:string;contentType?:string;bytes?:number;savedAt?:string;
+}
 export interface ScoutListing {
   provider:'RentCast'|'Supplied'|'Google Sheets';sourceId:string;address:string;city:string;state:string;zip:string;
   latitude:number|null;longitude:number|null;propertyType:string|null;units:number|null;
@@ -10,7 +14,7 @@ export interface ScoutListing {
   price:number|null;listedAt:string|null;lastSeenAt:string|null;daysOnMarket:number|null;
   closedSale?:{price:number|null;date:string|null;source:string}|null;
   status:ListingStatus;checkedAt:string;url:string|null;description:string|null;
-  photos:{url:string;source:string;licensed:boolean}[];conflicts:string[];sourceReference:string;
+  photos:PropertyPhoto[];conflicts:string[];sourceReference:string;
 }
 export interface ScoutConfig {
   enabled:boolean;region:{latitude:number;longitude:number;radiusMiles:number}|null;cities:string[];maxPrice:number|null;maxRequestsPerRun:number;monthlyRequestLimit:number;

@@ -21,13 +21,21 @@ await db.query('select public.save_deal($1,$2,$3,$4,$5)', ['33333333-3333-4333-8
 await db.exec('reset role;');
 await db.exec(await readFile(root+'supabase/migrations/202611090001_property_feed_scout.sql','utf8'));
 await db.exec(await readFile(root+'supabase/migrations/202611090002_google_sheet_feed.sql','utf8'));
-console.log('Workspace, Scout and Google Sheets migrations executed; legacy analysis backfilled.');
+await db.exec(await readFile(root+'supabase/migrations/202611090003_property_feed_views.sql','utf8'));
+// PGlite models the managed Storage schema/policies; HTTP tests separately exercise byte upload/download.
+await db.exec(`create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);alter table storage.objects enable row level security;grant usage on schema storage to authenticated,service_role;grant select,insert,update,delete on storage.objects to authenticated;grant all on storage.buckets,storage.objects to service_role;`);
+await db.exec(await readFile(root+'supabase/migrations/202611090004_property_photo_storage.sql','utf8'));
+console.log('Workspace, Scout, Google Sheets, read-marker and private-photo-storage migrations executed; legacy analysis backfilled.');
 await db.exec(`set role authenticated;set request.jwt.claim.sub='11111111-1111-4111-8111-111111111111';`);
 const keys=(await db.query(`select private.property_key('2221 Eby Avenue, Fort Wayne, IN 46802') a,private.property_key('2221 Eby Ave, Fort Wayne, IN') b`)).rows[0];assert.equal(keys.a,keys.b);
 const saved=(await db.query('select public.save_deal($1,$2,$3,$4,$5) result',['22222222-2222-4222-8222-222222222222',null,rows.deal,rows.adjustments,rows.taxes])).rows[0].result;
 assert.equal((await db.query('select count(distinct property_id)::int n from public.deals')).rows[0].n,1);
 assert.equal((await db.query('select count(*)::int n from public.deals')).rows[0].n,2);
 console.log('New and legacy analyses share one property; history preserved.');
+await db.query('update public.properties set first_viewed_at=$1 where id=$2 and first_viewed_at is null',['2026-11-09T10:00:00Z',saved.property_id]);
+await db.query('update public.properties set first_viewed_at=$1 where id=$2 and first_viewed_at is null',['2026-11-09T11:00:00Z',saved.property_id]);
+const firstViewed=(await db.query('select first_viewed_at from public.properties where id=$1',[saved.property_id])).rows[0].first_viewed_at;
+assert.equal(new Date(firstViewed).toISOString(),'2026-11-09T10:00:00.000Z');
 await db.query('insert into public.scout_settings(owner_id,config) values($1,$2)', ['11111111-1111-4111-8111-111111111111',{monthlyRequestLimit:2,maxRequestsPerRun:1}]);
 await db.query('update public.properties set manual_review=$1 where id=$2',[{notes:'SYNTHETIC manual note: preserve',workflow:'Watch'},saved.property_id]);
 await db.exec(`set role service_role;`);
@@ -39,7 +47,7 @@ assert.equal((await db.query('select public.scout_reserve($1,$2,$3) allowed',[fi
 const listing={address:'2221 Eby Avenue, Fort Wayne, IN',status:'Active',price:90000,city:'Fort Wayne',state:'IN',zip:'46802',checkedAt:new Date().toISOString(),latitude:null,longitude:null};
 await db.query('select public.scout_save_listing($1,$2,$3)',[first.id,listing,{stage:'enriched',recommendation:'Needs Review'}]);
 await db.query('select public.scout_save_listing($1,$2,$3)',[first.id,listing,{stage:'enriched',recommendation:'Needs Review'}]);
-let props=(await db.query('select * from public.properties')).rows;if(props.length!==1)throw new Error('Duplicate canonical property');if(props[0].property_details.draft.overrides.Bedrooms!=='4')throw new Error('Manual details overwritten');
+let props=(await db.query('select * from public.properties')).rows;if(props.length!==1)throw new Error('Duplicate canonical property');if(props[0].property_details.draft.overrides.Bedrooms!=='4')throw new Error('Manual details overwritten');assert.equal(new Date(props[0].first_viewed_at).toISOString(),new Date(firstViewed).toISOString());
 assert.equal(props[0].manual_review.notes,'SYNTHETIC manual note: preserve');
 assert.equal((await db.query('select count(*)::int n from public.property_scout_evaluations')).rows[0].n,1);
 let history=(await db.query('select * from public.property_listing_history')).rows;if(history.length!==1)throw new Error('Duplicate status history');
@@ -61,6 +69,14 @@ await db.query('select public.scout_finish($1,$2,$3)',[statusRun.id,{status:'par
 assert.equal((await db.query('select requests from public.scout_runs where id=$1',[statusRun.id])).rows[0].requests,3);
 await assert.rejects(()=>db.query('select public.scout_reserve($1,$2,$3)',[first.id,month,2]));
 console.log('Canonical deduplication, snapshot/history idempotency, request caps, run exclusion and manual preservation verified.');
+await db.query('insert into storage.objects(bucket_id,name) values($1,$2),($1,$3)',['railhouse-property-photos','11111111-1111-4111-8111-111111111111/example/photo.jpg','33333333-3333-4333-8333-333333333333/example/photo.jpg']);
+assert.equal((await db.query("select public from storage.buckets where id='railhouse-property-photos'")).rows[0].public,false);
+await db.exec(`set role authenticated;set request.jwt.claim.sub='11111111-1111-4111-8111-111111111111';`);
+assert.equal((await db.query('select count(*)::int n from storage.objects')).rows[0].n,1);
+await assert.rejects(()=>db.query("insert into storage.objects(bucket_id,name) values('railhouse-property-photos','unauthorized-upload')"),/row-level security/);
+await db.exec(`set request.jwt.claim.sub='33333333-3333-4333-8333-333333333333';`);
+assert.equal((await db.query('select count(*)::int n from storage.objects')).rows[0].n,0);
+console.log('Private image bucket and owner-only Storage read policy verified.');
 await db.exec('set role anon;');
 try{await db.query("select public.scout_begin('unauthorized')");throw new Error('Anonymous Scout mutation allowed');}catch(e){if(!String(e).includes('permission denied'))throw e;}
 console.log('Anonymous Scout execution denied.');
