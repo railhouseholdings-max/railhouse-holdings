@@ -1,6 +1,8 @@
 export interface PropertyFact { label: string; value: string }
 export interface RentCastLookup {
-  source: 'RentCast';
+  source: 'RentCast'|'Google Sheets';
+  sourceReference?:string;
+  coordinates?:{latitude:number;longitude:number};
   address: string;
   fetchedAt: string;
   facts: PropertyFact[];

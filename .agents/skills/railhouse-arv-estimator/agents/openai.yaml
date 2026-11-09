@@ -1,0 +1,4 @@
+interface:
+  display_name: "Railhouse ARV Estimator"
+  short_description: "Explainable ARV from adjusted closed comparable sales"
+  default_prompt: "Use $railhouse-arv-estimator to estimate after-repair value using the application engine and attributable closed sales."

@@ -1,0 +1,9 @@
+import type { AdjustmentFeature, AdjustmentRate, ArvProperty, ArvSource } from '../../domain/arv.ts';
+export const METHODOLOGY_VERSION='railhouse-sales-comparison-1.0.0';
+export const CALIBRATION_VERSION='eby-original-appraisal-2026-04-24-v2';
+export const EBY_SOURCE:ArvSource={provider:'Eby original appraisal PDF',recordId:'appraisal-1359298',reference:'appraisal and 1007.pdf#page=4; grid continuation p9; reconciliation p24; SHA256 9c83877c34f5ef7e8dc44467001d5f0235afd1a3051ba3d92819ce8bcdb1aa97',retrievedAt:'2026-11-09',reliability:0.95,status:'verified'};
+export const EBY_CALIBRATION={version:CALIBRATION_VERSION,valuationDate:'2026-04-24',appraisedValue:151000,adjustedIndications:[154300,150681,147004,153130],originalGridAvailable:true,missing:['Exact settlement days','Exact weight derivation and final rounding convention']} as const;
+export const EBY_SUBJECT:ArvProperty={id:'eby-calibration',address:'2221 Eby Ave, Fort Wayne, IN',propertyType:'Single Family',units:1,bedrooms:3,bathrooms:1,glaSqFt:1171,lotSqFt:6268,yearBuilt:1928,basementSqFt:509,basementFinishedSqFt:255,garageSpaces:1,condition:'C3',quality:'Q4',floodZone:'AE',style:'Traditional',submarket:null,latitude:null,longitude:null,sources:[EBY_SOURCE],evidence:{bedrooms:'verified',bathrooms:'verified',glaSqFt:'verified',condition:'verified',quality:'verified'},conflicts:[]};
+export function historicalEbyRates():Partial<Record<AdjustmentFeature,AdjustmentRate>> {
+  return Object.fromEntries(Object.entries({glaSqFt:35,lotSqFt:0.70,bathrooms:2500,garageSpaces:4000,floodZone:3500,marketTime:2.4}).map(([feature,value])=>[feature,{effectiveDate:'2026-04-24',value,basis:'eby-historical',evidence:EBY_SOURCE,rationale:'Historical Eby reference only; not a current universal market coefficient.',confidence:0.45}])) as Partial<Record<AdjustmentFeature,AdjustmentRate>>;
+}

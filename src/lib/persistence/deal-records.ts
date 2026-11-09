@@ -1,3 +1,4 @@
+import { validatePropertyDetails } from './property-details.ts';
 import type { DealInputs, DealAnalysis } from '../../domain/models.ts';
 import type { SaveDealRequest } from '../../domain/saved-deal.ts';
 import type { RentalTaxMatch } from '../../domain/property-tax.ts';
@@ -53,10 +54,13 @@ export function validateSaveDeal(value: unknown): SaveDealRequest {
   if (!tax || typeof tax.parcelId !== 'string' || tax.parcelId.length > 40 || !Number.isInteger(tax.payableYear) || Number(tax.payableYear) < 2020 || Number(tax.payableYear) > 2100) throw new Error('Invalid tax assumptions.');
   if (tax.annualOverride !== null && (typeof tax.annualOverride !== 'number' || !Number.isFinite(tax.annualOverride) || tax.annualOverride < 0 || tax.annualOverride > 1e9)) throw new Error('Invalid annual tax override.');
   calculateDeal(inputs,closingAdjustments,purchaseAdjustments);
-  return {id:v.id as string|null,expectedRevision:v.expectedRevision as number|null,address,status:v.status,inputs,closingAdjustments,purchaseAdjustments,taxAssumptions:{parcelId:tax.parcelId,payableYear:Number(tax.payableYear),annualOverride:tax.annualOverride as number|null}};
+  const propertyDetails=v.propertyDetails===undefined?undefined:validatePropertyDetails(v.propertyDetails);
+  if(v.expectedPropertyRevision!==undefined&&(!Number.isSafeInteger(v.expectedPropertyRevision)||Number(v.expectedPropertyRevision)<0))throw new Error('Invalid property revision.');
+  return {propertyDetails,expectedPropertyRevision:v.expectedPropertyRevision as number|undefined,id:v.id as string|null,expectedRevision:v.expectedRevision as number|null,address,status:v.status,inputs,closingAdjustments,purchaseAdjustments,taxAssumptions:{parcelId:tax.parcelId,payableYear:Number(tax.payableYear),annualOverride:tax.annualOverride as number|null}};
 }
 export function toDealRows(request: SaveDealRequest, evidence: RentalTaxMatch) {
   const deal: DbRow = {address:request.address,status:request.status};
+  if(request.propertyDetails){deal.property_details=request.propertyDetails;deal.expected_property_revision=request.expectedPropertyRevision??0;}
   for (const [key,column] of Object.entries(INPUT_COLUMNS)) deal[column] = request.inputs[key as keyof DealInputs];
   const adjustments: DbRow = {};
   const all = {...request.closingAdjustments,...request.purchaseAdjustments};
@@ -81,6 +85,7 @@ export function fromDealRow(row: DbRow): DealAnalysis {
   const purchaseAdjustments = {additionalCosts:dbNumber(adj.additional_purchase_costs),buyerCredits:dbNumber(adj.buyer_credits)};
   calculateDeal(inputs,closingAdjustments,purchaseAdjustments);
   if (row.status !== 'Reviewing' && row.status !== 'Researching') throw new Error('Stored deal status is invalid.');
-  return {id:String(row.id),address:String(row.address),status:row.status,updatedAt:String(row.updated_at),revision:dbNumber(row.revision),inputs,closingAdjustments,purchaseAdjustments,
+  const property=row.properties?oneRelation(row.properties,'canonical property'):null;
+  return {propertyId:typeof row.property_id==='string'?row.property_id:undefined,propertyRevision:property?dbNumber(property.details_revision):undefined,propertyDetails:property&&property.property_details&&typeof property.property_details==='object'&&'draft' in property.property_details?validatePropertyDetails(property.property_details):undefined,id:String(row.id),address:String(row.address),status:row.status,updatedAt:String(row.updated_at),revision:dbNumber(row.revision),inputs,closingAdjustments,purchaseAdjustments,
     taxAssumptions:{parcelId:String(tax.parcel_id ?? ''),payableYear:dbNumber(tax.payable_year),annualOverride:tax.annual_override === null ? null : dbNumber(tax.annual_override)},taxEvidence:tax.evidence as RentalTaxMatch};
 }

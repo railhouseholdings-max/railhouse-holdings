@@ -1,0 +1,23 @@
+{
+  "fixtureType": "partial-user-supplied-appraisal-summary",
+  "calibrationVersion": "eby-user-summary-2026-04-24-v1",
+  "subjectAddress": "2221 Eby Ave, Fort Wayne, IN",
+  "valuationDate": "2026-04-24",
+  "appraisedValue": 151000,
+  "adjustedIndications": [
+    154300,
+    150681,
+    147004,
+    153130
+  ],
+  "originalPdfFound": false,
+  "rawComparableSales": null,
+  "individualAdjustmentGrid": null,
+  "reconciliationWeights": null,
+  "source": "User request: Eby historical appraisal summary; not independently verified against the PDF",
+  "excludedTarget": {
+    "amount": 160000,
+    "reason": "Owner hoped-for value; not valuation evidence"
+  },
+  "supersededBy": "eby-appraisal-grid.json; original PDF supplied 2026-11-09"
+}

@@ -1,3 +1,4 @@
+import { rentCastRequest, type RentCastRequestOptions } from "./client.ts";
 import type { PropertyFact, RentCastLookup } from '../../domain/property-lookup.ts';
 import { isCompletePropertyAddress } from '../../domain/property-lookup.ts';
 
@@ -47,16 +48,14 @@ function factsFrom(property: Record<string,unknown>): PropertyFact[] {
   }
   return facts;
 }
-export async function lookupRentCast(address: string, options: { apiKey: string; fetcher?: typeof fetch; signal?: AbortSignal }): Promise<RentCastLookup> {
+export async function lookupRentCast(address: string, options: RentCastRequestOptions): Promise<RentCastLookup> {
   if(!isCompletePropertyAddress(address)) throw new Error('Enter a full street address with city and state or ZIP.');
   if(!options.apiKey.trim()) throw new Error('RentCast is not configured.');
   const signal=options.signal?AbortSignal.any([options.signal,AbortSignal.timeout(15000)]):AbortSignal.timeout(15000);
   const get=async(path:string) => {
     const url=new URL(`https://api.rentcast.io/v1/${path}`);url.searchParams.set('address',address.trim());
     if(path.startsWith('avm/')) {url.searchParams.set('compCount','5');url.searchParams.set('lookupSubjectAttributes','true');}
-    const response=await(options.fetcher??fetch)(url,{headers:{Accept:'application/json','X-Api-Key':options.apiKey},cache:'no-store',signal});
-    if(!response.ok) throw new Error('RentCast lookup unavailable.');
-    return response.json() as Promise<unknown>;
+    return rentCastRequest(path as 'properties'|'avm/rent/long-term',url.searchParams,{...options,signal});
   };
   const [records,estimate]=await Promise.allSettled([get('properties'),get('avm/rent/long-term')]);
   if(options.signal?.aborted) throw new Error('RentCast lookup interrupted.');
@@ -74,5 +73,7 @@ export async function lookupRentCast(address: string, options: { apiKey: string;
   if(!rent) warnings.push('A rent estimate was not available for this exact address. Enter expected rent manually.');
   if(perUnit && rent) warnings.push('RentCast estimates rent for one unit. Confirm total property rent before calculating.');
   if(!property && !rent) throw new Error('Property details and rent estimate are unavailable. Check the full address or enter values manually.');
-  return {source:'RentCast',address:text(property?.formattedAddress)||address.trim(),fetchedAt:new Date().toISOString(),facts:property?factsFrom(property):[],rent,warnings};
+  return {source:'RentCast',address:text(property?.formattedAddress)||address.trim(),fetchedAt:new Date().toISOString(),facts:property?factsFrom(property):[],coordinates:typeof property?.latitude==='number'&&typeof property?.longitude==='number'&&Number.isFinite(property.latitude)&&Number.isFinite(property.longitude)&&Math.abs(property.latitude)<=90&&Math.abs(property.longitude)<=180?{latitude:property.latitude,longitude:property.longitude}:undefined,rent,warnings};
 }
+
+export { matches as matchesRentCastAddress };

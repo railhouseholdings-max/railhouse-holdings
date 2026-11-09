@@ -46,8 +46,8 @@ export async function passwordSignIn(config: CloudConfig, email: string, passwor
 }
 export async function restRequest<T>(config: CloudConfig, session: OwnerSession, path: string, init: RequestInit = {}, fetcher: Fetcher = fetch): Promise<T> {
   if (session.userId !== config.ownerId) throw new Error('Private workspace access denied.');
-  if (!/^(properties|deals)(\?|$)|^rpc\/save_deal$/.test(path)) throw new Error('Unsupported repository operation.');
-  const response = await fetcher(`${config.url}/rest/v1/${path}`,{...init,headers:cloudHeaders(config,session.accessToken),cache:'no-store',signal:AbortSignal.timeout(15000)});
+  if (!/^(properties|deals|scout_settings|scout_runs|property_listing_history|property_scout_evaluations)(\?|$)|^rpc\/save_deal$/.test(path)) throw new Error('Unsupported repository operation.');
+  const response = await fetcher(`${config.url}/rest/v1/${path}`,{...init,headers:(()=>{const h=cloudHeaders(config,session.accessToken);const prefer=new Headers(init.headers).get('Prefer');if(prefer)h.set('Prefer',prefer);return h;})(),cache:'no-store',signal:AbortSignal.timeout(15000)});
   if (response.status === 401 || response.status === 403) throw new Error('Session expired or workspace access denied. Sign in again.');
   if (response.status === 409) throw new Error('This deal changed in another session. Reload it before saving again.');
   if (!response.ok) throw new Error('Cloud database request failed. Check migrations, owner setup, and database availability.');

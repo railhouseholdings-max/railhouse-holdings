@@ -1,0 +1,9 @@
+# Confidence
+
+Confidence is a transparent policy score (0–100), not a probability of appraisal accuracy and not the deal-strength grade.
+
+Factors in `confidence.ts`: usable closed count 15%, location 15%, recency 10%, comparable-condition evidence 15%, subject completeness 10%, adjustment support 15%, agreement among indications 10%, source reliability 10%. Component values and weights are returned in the result. Agreement is reduced by dispersion of adjusted prices. Condition derived from photos or descriptions is discounted; unavailable condition receives little credit.
+
+Caps: provisional configuration at 69; fewer than four comps at 59; unresolved differences at 59; all comp conditions unknown at 39; subject or selected-comp conflicts at 49; fewer than three comps at 24 and no numeric ARV. High >=80; Medium >=60; Low below60 with sufficient comps; otherwise Insufficient Evidence. Historical fallback discounts adjustment support and caps the score at 59. Adjustment confidence and source reliability directly reduce support; unavailable/empty field metadata and missing comparable bedrooms or other material attributes reduce confidence. Preliminary photo/description evidence caps the score at 69 and makes status provisional. Source and condition quality affect both comparable weight and valuation confidence for different purposes.
+
+Low-confidence ranges use full observed adjusted bounds instead of central weighted tails. Do not invent an upward premium to widen the high end. If observations all agree but key features are unpriced, explain the unquantified uncertainty; the apparent narrow range does not certify certainty. Improve confidence by obtaining verified local closed evidence, proposed legal configuration, condition support and market-specific adjustment evidence, not by removing warnings.

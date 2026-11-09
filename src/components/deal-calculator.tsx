@@ -2,11 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { sheetInputEstimates } from '@/lib/sheets/import';
+import type { FeedProperty } from '@/lib/data/property-feed';
+import type { RentCastLookup } from '@/domain/property-lookup';
 import type { SaveDealRequest } from "@/domain/saved-deal";
 import type { DealAnalysis, DealInputs } from "@/domain/models";
 import { calculateDeal } from "@/lib/calculations/deal";
 import { money, percent } from "@/lib/format";
 import { DetailRows } from "./ui";
+import { ArvEstimator } from "./arv-estimator";
 import { ShareDealButton } from "./share-deal-button";
 import { PurchasePriceExplorer } from "./purchase-price-explorer";
 import { targetPurchasePrice } from "@/lib/calculations/target-purchase-price";
@@ -87,7 +91,7 @@ function InputFields({ definitions, values, onChange, trailing }: {
 }
 
 
-export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: { initialDeal?: DealAnalysis | null; asOfDate: string; cloudEnabled?: boolean }) {
+export function DealCalculator({ initialDeal, initialProperty, asOfDate, cloudEnabled = false }: { initialDeal?: DealAnalysis | null; initialProperty?:FeedProperty|null; asOfDate: string; cloudEnabled?: boolean }) {
   const router = useRouter();
   const resultsHeading = useRef<HTMLHeadingElement>(null);
   const inputsHeading = useRef<HTMLHeadingElement>(null);
@@ -98,14 +102,16 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
     heading?.focus({ preventScroll: true });
     heading?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
   }, [calculationRequest]);
-  const [fields, setFields] = useState(() => initialDealFields(asOfDate, initialDeal?.inputs));
-  const [propertyDraft, setPropertyDraft] = useState(emptyPropertyDetails);
+  const [fields, setFields] = useState(() => {const values=initialDealFields(asOfDate, initialDeal?.inputs??initialProperty?.evaluation?.inputs??undefined);if(!initialDeal&&initialProperty){for(const [key,value] of Object.entries(sheetInputEstimates(initialProperty.evaluation?.imported)))values[key as keyof DealInputs]=String(value);if(initialProperty.listing?.price)values.purchasePrice=String(initialProperty.listing.price);if(initialProperty.evaluation?.arv?.likelyArv)values.arv=String(initialProperty.evaluation.arv.likelyArv);if(initialProperty.evaluation?.rehab)values.rehabBudget=String(initialProperty.evaluation.rehab.base);if(initialProperty.evaluation?.rent&&!initialProperty.evaluation.rent.perUnit)values.monthlyRent=String(initialProperty.evaluation.rent.monthly);}return values;});
+  const [propertyDraft, setPropertyDraft] = useState(() => initialDeal?.propertyDetails?.draft??initialProperty?.details.draft??(initialProperty?.facts?{...emptyPropertyDetails(),overrides:initialProperty.facts}:emptyPropertyDetails()));
   const automaticRent = useRef<string | null>(null);
   const manualRent = useRef(Boolean(initialDeal));
-  const automaticContingency = useRef(!initialDeal);
-  const [address, setAddress] = useState(initialDeal?.address ?? "");
-  const taxModel = usePropertyTaxModel(address,fields.monthlyRent,{assumptions:initialDeal?.taxAssumptions,evidence:initialDeal?.taxEvidence});
+  const automaticContingency = useRef(!initialDeal&&!initialProperty?.evaluation?.imported?.raw['Unforeseen Construction']);
+  const [address, setAddress] = useState(initialDeal?.address ?? initialProperty?.address ?? "");
+  const taxModel = usePropertyTaxModel(address,fields.monthlyRent,{assumptions:initialDeal?.taxAssumptions??(sheetInputEstimates(initialProperty?.evaluation?.imported).annualPropertyTaxes!==undefined?{parcelId:'',payableYear:Number(asOfDate.slice(0,4))+1,annualOverride:sheetInputEstimates(initialProperty?.evaluation?.imported).annualPropertyTaxes!}:undefined),evidence:initialDeal?.taxEvidence});
   const [savedRecord,setSavedRecord] = useState<{id:string;revision:number} | null>(initialDeal?.revision ? {id:initialDeal.id,revision:initialDeal.revision} : null);
+  const [propertyRevision,setPropertyRevision]=useState(initialDeal?.propertyRevision??initialProperty?.propertyRevision??0);
+  const saveInFlight=useRef(false);
   const [saving,setSaving] = useState(false);
   const [saveMessage,setSaveMessage] = useState("");
   const populateRent = useCallback((value: string) => {
@@ -115,12 +121,14 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
     setFields(previous => canAutofillRent(previous.monthlyRent, previousAutomatic) ? { ...previous, monthlyRent: value } : previous);
     setSaveMessage("");
   }, []);
-  const propertyLookup = usePropertyLookup(populateRent);
-  const resetEstimates = () => {setPropertyDraft(emptyPropertyDetails()); propertyLookup.invalidate(); automaticRent.current = null; manualRent.current = false; taxModel.reset(); automaticContingency.current = true; setSavedRecord(null); setSaveMessage("");};
+  const initialLookup:RentCastLookup|undefined=initialDeal?.propertyDetails?.lookup??initialProperty?.details.lookup??(initialProperty?.listing?{source:initialProperty.listing.provider==='Google Sheets'?'Google Sheets':'RentCast',sourceReference:initialProperty.listing.sourceReference,address:initialProperty.address,fetchedAt:initialProperty.listing.checkedAt,facts:Object.entries({'Property type':initialProperty.listing.propertyType,'Units':initialProperty.listing.units,'Bedrooms':initialProperty.listing.bedrooms,'Bathrooms':initialProperty.listing.bathrooms,'Living area':initialProperty.listing.squareFeet,'Lot size':initialProperty.listing.lotSquareFeet,'Year built':initialProperty.listing.yearBuilt}).filter(([,v])=>v!==null).map(([label,value])=>({label,value:String(value)})),rent:initialProperty.evaluation?.rent??null,warnings:['Listing attributes are provider-reported; legal units and above-grade area need verification.']}:undefined);
+  const propertyLookup = usePropertyLookup(populateRent,initialLookup?{...initialLookup,address}:undefined);
+  const resetEstimates = () => {setPropertyDraft(emptyPropertyDetails()); propertyLookup.invalidate(); automaticRent.current = null; manualRent.current = false; taxModel.reset(); automaticContingency.current = true; setSavedRecord(null); setPropertyRevision(0); setSaveMessage("");};
   // A new address invalidates query-scoped lookup data automatically. Preserve the
   // explicitly selected tax year and manual override until the user clears them.
   const changeAddress = (next: string) => {
     if (next !== address) {
+      setSavedRecord(null);setPropertyRevision(0);
       setPropertyDraft(emptyPropertyDetails());
       propertyLookup.invalidate();
       const previousAutomatic = automaticRent.current;
@@ -182,19 +190,21 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
     setIsEdited(true);
   };
   const saveDeal = async () => {
-    if (!calculatedInput || !result || saving) return;
-    const payload: SaveDealRequest = {id:savedRecord?.id ?? null,expectedRevision:savedRecord?.revision ?? null,address,status:initialDeal?.status ?? "Reviewing",inputs:calculatedInput,closingAdjustments,purchaseAdjustments,
+    if (!calculatedInput || !result || saveInFlight.current) return;
+    saveInFlight.current=true;
+    const payload: SaveDealRequest = {propertyDetails:{draft:propertyDraft,lookup:propertyLookup.state?.address===address.trim()?propertyLookup.state.data:undefined},expectedPropertyRevision:propertyRevision,id:savedRecord?.id ?? null,expectedRevision:savedRecord?.revision ?? null,address,status:initialDeal?.status ?? "Reviewing",inputs:calculatedInput,closingAdjustments,purchaseAdjustments,
       taxAssumptions:{parcelId:taxModel.parcelId,payableYear:Number(taxModel.payableYear),annualOverride:taxModel.override.trim() === "" ? null : Number(taxModel.override)}};
     setSaving(true); setSaveMessage("");
     try {
       const response=await fetch("/api/deals",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-      const data=await response.json() as {id?:string;revision?:number;error?:string};
+      const data=await response.json() as {id?:string;revision?:number;property_revision?:number;error?:string};
       if (!response.ok || !data.id || !data.revision) throw new Error(data.error ?? "Could not save this deal.");
       setSavedRecord({id:data.id,revision:data.revision});
+      if(data.property_revision!==undefined)setPropertyRevision(data.property_revision);
       router.refresh();
-      setSaveMessage(`Saved revision ${data.revision}. New edits require another save. Open this deal from your Dashboard to reload it.`);
+      setSaveMessage(`Saved revision ${data.revision}. New edits require another save. Shared property details and analysis are now in your property feed.`);
     } catch(error) {setSaveMessage(error instanceof Error ? error.message : "Save failed. Your inputs remain in this tab.");}
-    finally {setSaving(false);}
+    finally {saveInFlight.current=false;setSaving(false);}
   };
   const targetPrice = result && calculatedInput ? targetPurchasePrice(calculatedInput, result) : null;
   const explained = (label: string, key: string) => <ExplainedValue label={label} explanation={<p>{explanations[key]}</p>} />;
@@ -204,7 +214,7 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
     {taxModel.warning && <p className="notice tax-warning" role="alert">{taxModel.warning}</p>}
     {referenceLoaded && <p className="notice">{isEdited ? "Editing the closing-document reference. Calculated amounts reflect your current inputs. " : ""}Closing-document loan terms loaded: $113,250 loan, 6.25%, 30 years, funding June 8, 2026. Project costs and rent are still your inputs. The source closing reported $105,833.63 cash to borrower. This analysis uses the selected county rental estimate or manual override; closing totals may differ from the historical reference.</p>}
     {purchaseReferenceLoaded && <p className="notice">Purchase statement reference loaded: December 19, 2025 · $80,000 purchase, $50,000 estimated rehab, and $314 purchase closing fees. Source total: $130,314. Current results use any edits you make; other assumptions remain your inputs.</p>}
-    <form onSubmit={event => { event.preventDefault(); setShowResults(true); setCalculationRequest(request => request + 1); }} className="calculator-form calculator-sections">
+    <form onSubmit={event => { event.preventDefault(); setShowResults(true); setCalculationRequest(request => request + 1); if(cloudEnabled)void saveDeal(); }} className="calculator-form calculator-sections">
       {showResults && <section className="panel results deal-metrics-section" aria-labelledby="deal-metrics-heading">
           <p className="eyebrow section-kicker">01 · DEAL METRICS</p><h2 id="deal-metrics-heading" ref={resultsHeading} tabIndex={-1} className="results-heading">{result ? "Deal metrics & rating" : "A clear picture, before you buy."}</h2>
           <p className="muted result-description">{result ? address || "Your analysis" : "Enter the four project numbers, then calculate to see cash flow and capital recovery."}</p>
@@ -224,6 +234,7 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
             onRetry={() => { void propertyLookup.commit(address, true); }}
             onUseRent={value => { manualRent.current = false; automaticRent.current = value; setFields(previous => ({ ...previous, monthlyRent: value })); setShowResults(false); setIsEdited(true); setSaveMessage(""); }} />
           {renderFields([...projectFields.filter(field => ["purchasePrice", "rehabBudget", "arv"].includes(field.key)),operatingFields[0]])}
+          <ArvEstimator key={address} address={address} property={propertyLookup.state?.address === address.trim() ? propertyLookup.state.data : undefined} draft={propertyDraft} valuationDate={asOfDate} onApply={value => update("arv", String(value))} />
           <PropertyTaxFields model={taxModel} projectedRent={fields.monthlyRent} />
         <div className="form-actions primary-actions"><button type="submit" className="button">Calculate deal <span aria-hidden="true">→</span></button><button type="button" className="button secondary" onClick={() => {
           resetEstimates(); setFields(initialDealFields(asOfDate)); setAddress(""); setIsEdited(false); setShowResults(false); setClosingAdjustments({ ...DEFAULT_CLOSING_ADJUSTMENTS }); setReferenceLoaded(false);
@@ -295,7 +306,7 @@ export function DealCalculator({ initialDeal, asOfDate, cloudEnabled = false }: 
               <h3 id="detailed-results-heading">Calculated results</h3>
               <DealStrengthDetails result={result} arv={Number(fields.arv)} monthlyRent={Number(fields.monthlyRent)} />
             <div className="capital-summary"><div><span>{explained("Cash left in the deal", "cashRemainingInDeal")}</span><strong>{money(result.cashRemainingInDeal, true)}</strong></div><div><span>{explained("Capital recovered", "recoveryPercent")}</span><strong>{percent(result.recoveryPercent)}</strong></div></div>
-            {cloudEnabled && <div className="save-deal-controls"><button className="button" type="button" disabled={saving} onClick={saveDeal}>{saving ? "Saving…" : savedRecord ? "Update saved deal" : "Save deal"}</button><p className="note" role="status">{saveMessage || "Saves project inputs, fee adjustments, and tax assumptions to your private database."}</p></div>}
+            {cloudEnabled && <div className="save-deal-controls"><button className="button" type="button" disabled={saving} onClick={saveDeal}>{saving ? "Saving…" : savedRecord ? "Update saved deal" : "Save deal"}</button><p className="note" role="status">{saveMessage || "Calculating saves this analysis and shared property details to your feed. Save again after making changes."}</p></div>}
             {result.cashRemainingInDeal < 0 && <p className="note">Negative cash left means refinance proceeds exceed the modeled project cost.</p>}
             <h3 className="breakdown-title">Refinance & cash returned</h3>
             <DetailRows rows={[

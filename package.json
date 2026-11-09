@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.ts"
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "arv": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/estimate-arv.ts",
+    "test:db": "node --experimental-strip-types scripts/test-scout-database.mjs",
+    "scout": "node --experimental-strip-types scripts/run-scout.ts"
   },
   "dependencies": {
     "next": "^16.0.0",
@@ -16,6 +19,7 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

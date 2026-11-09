@@ -1,3 +1,5 @@
+import { propertyDetailValue,type PropertyDetailsDraft } from '../deals/property-details.ts';
+import type { RentCastLookup } from '../../domain/property-lookup.ts';
 import type { Property } from '../../domain/models.ts';
 import { dbNumber, oneRelation, type DbRow } from './deal-records.ts';
 function current(value: unknown, label: string): DbRow | null {
@@ -9,13 +11,15 @@ function current(value: unknown, label: string): DbRow | null {
 const text = (v: unknown) => {if (typeof v !== 'string') throw new Error('A stored property value is missing.');return v;};
 const nullableText = (v: unknown) => v === null ? null : text(v);
 export function fromPropertyRow(row: DbRow): Property {
-  const n=(key:string)=>dbNumber(row[key]);
+  const details=row.property_details as {lookup?:RentCastLookup;draft?:PropertyDetailsDraft}|undefined;
+  const labels:Record<string,string>={beds:'Bedrooms',baths:'Bathrooms',square_feet:'Living area',lot_square_feet:'Lot size',year_built:'Year built'};
+  const n=(key:string)=>{const value=labels[key]&&details?.draft?propertyDetailValue(details.lookup,details.draft,labels[key]):'';return value!==''&&Number.isFinite(Number(value))&&Number(value)>=0?Number(value):dbNumber(row[key]);};
   const finance=oneRelation(row.property_financials,'property financials'), operations=oneRelation(row.property_operations,'property operations');
   const f=(key:string)=>dbNumber(finance[key]),o=(key:string)=>dbNumber(operations[key]);
   const loan=current(row.property_loans,'property loans'),lease=current(row.property_leases,'property leases'),value=current(row.property_valuations,'property valuations');
   if (!value) throw new Error('A current valuation is required for portfolio calculations.');
   if (!['Rented','Rehab','Vacant'].includes(String(row.status))) throw new Error('Stored property status is invalid.');
-  return {id:text(row.id),address:text(row.address),city:text(row.city),state:text(row.state),zip:text(row.zip),beds:n('beds'),baths:n('baths'),squareFeet:n('square_feet'),yearBuilt:n('year_built'),garage:text(row.garage),lotSquareFeet:n('lot_square_feet'),propertyType:text(row.property_type),status:row.status as Property['status'],
+  return {id:text(row.id),address:text(row.address),city:text(row.city),state:text(row.state),zip:text(row.zip),beds:n('beds'),baths:n('baths'),squareFeet:n('square_feet'),yearBuilt:n('year_built'),garage:text(row.garage),lotSquareFeet:n('lot_square_feet'),propertyType:details?.draft?propertyDetailValue(details.lookup,details.draft,'Property type')||text(row.property_type):text(row.property_type),status:row.status as Property['status'],
     acquisition:{purchasePrice:f('purchase_price'),closingCosts:f('acquisition_closing_costs'),initialFinancing:f('initial_financing'),cashInvested:f('acquisition_cash_invested'),acquisitionDate:text(finance.acquisition_date)},
     rehab:{originalBudget:f('original_rehab_budget'),actualCost:f('actual_rehab_cost'),startDate:nullableText(finance.rehab_start_date),completionDate:nullableText(finance.rehab_completion_date)},
     financials:{totalCashInvested:f('total_cash_invested'),cashLeftInDeal:f('cash_left_in_deal'),realizedCashFlow:f('realized_cash_flow'),realizedSaleProceeds:f('realized_sale_proceeds')},

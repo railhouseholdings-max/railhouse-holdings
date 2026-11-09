@@ -8,8 +8,8 @@ import { money } from '@/lib/format';
 import { PROPERTY_DETAIL_FIELDS, propertyDetailValue, proposedPropertyTotals, isMultifamilyProperty, propertyUnits, type PropertyDetailsDraft } from '@/lib/deals/property-details';
 
 type LookupState = {address:string;status:'loading'|'ready'|'error';data?:RentCastLookup;error?:string};
-export function usePropertyLookup(onRent: (value: string) => void) {
-  const [state,setState]=useState<LookupState|null>(null);
+export function usePropertyLookup(onRent: (value: string) => void, initial?:RentCastLookup) {
+  const [state,setState]=useState<LookupState|null>(()=>initial?{address:initial.address,status:'ready',data:initial}:null);
   const request=useRef<{key:string;controller:AbortController}|null>(null);
   useEffect(()=>()=>request.current?.controller.abort(),[]);
   const invalidate=()=>{request.current?.controller.abort();request.current=null;setState(null);};
@@ -17,6 +17,8 @@ export function usePropertyLookup(onRent: (value: string) => void) {
     const cleaned=address.trim();
     if(!cleaned) {invalidate();return;}
     const key=cleaned.toLowerCase().replace(/\s+/g,' ');
+    // Reusing an imported sheet property must not incur a paid lookup on ordinary field blur.
+    if(!retry&&state?.data?.source==='Google Sheets'&&state.address.trim().toLowerCase().replace(/\s+/g,' ')===key)return;
     if(!retry && request.current?.key===key) return;
     request.current?.controller.abort();
     const controller=new AbortController();request.current={key,controller};
@@ -51,11 +53,11 @@ export function PropertyLookupDetails({state,onRetry,onUseRent,currentRent,draft
   const hasEdits=draft.units!==undefined || Object.keys(draft.overrides).length>0 || Object.values(draft.additions).some(value=>Number(value)!==0);
   const edit=(label:string,value:string)=>onChange({...draft,overrides:{...draft.overrides,[label]:value}});
   return <details className="rentcast-details property-details-section">
-    <summary><span>Property details</span><small role="status">{state?.status==='loading'?'Looking up RentCast details…':state?.status==='error'?'Lookup unavailable · enter details manually':data?'RentCast details · edit current values & plan additions':'Current values & planned additions'}</small></summary>
+    <summary><span>Property details</span><small role="status">{state?.status==='loading'?'Looking up RentCast details…':state?.status==='error'?'Lookup unavailable · enter details manually':data?`${data.source} details · edit current values & plan additions`:'Current values & planned additions'}</small></summary>
     <div className="property-details-body">
-      {data && <p className="note">RentCast · {data.address} · retrieved {data.fetchedAt.slice(0,10)}. Correct any values below as needed.</p>}
+      {data && <p className="note">{data.source} · {data.address} · retrieved {data.fetchedAt.slice(0,10)}. Correct any values below as needed.</p>}
       {state?.status==='error' && <div className="notice"><p>{state.error}</p><button type="button" className="text-link" onClick={onRetry}>Retry property lookup</button></div>}
-      <h3><ExplainedValue label={multifamily?"Current building totals":"Current property"} explanation={<p>RentCast values describe the existing property. Correct any values below as needed. Your corrections are kept separately from the original provider data.</p>} /></h3>
+      <h3><ExplainedValue label={multifamily?"Current building totals":"Current property"} explanation={<p>Imported values describe the existing property. Correct any values below as needed. Your corrections are kept separately from the original provider data.</p>} /></h3>
       <div className="input-grid current-property-fields">
         {PROPERTY_DETAIL_FIELDS.map(field=><label className="field" key={field.label}><span>{field.label}</span>{field.label==='Property type'?<select value={propertyDetailValue(data,draft,field.label)} onChange={event=>edit(field.label,event.target.value)}><option value="">Not provided</option>{Array.from(new Set(['Single Family','Multi-Family','Duplex','Triplex','Fourplex','Apartment','Condo','Townhouse','Manufactured',propertyDetailValue(data,draft,field.label)].filter(Boolean))).map(type=><option key={type} value={type}>{type}</option>)}</select>:<div className="input-wrap"><input aria-label={`Current ${field.label.toLowerCase()}`} type={field.type} inputMode={field.type==='number'?'decimal':undefined} min={field.type==='number'?0:undefined} max={field.type==='number'?1000000000:undefined} step={'step' in field?field.step:undefined} placeholder="Not available" value={propertyDetailValue(data,draft,field.label)} onChange={event=>edit(field.label,event.target.value)} />{field.unit && <span>{field.unit}</span>}</div>}</label>)}
       </div>
@@ -69,7 +71,7 @@ export function PropertyLookupDetails({state,onRetry,onUseRent,currentRent,draft
         <dl className="property-facts proposed-property-totals" aria-live="polite" aria-atomic="true"><div><dt>Bedrooms</dt><dd>{totalText(totals.bedrooms)}</dd></div><div><dt>Bathrooms</dt><dd>{totalText(totals.bathrooms)}</dd></div><div><dt>Living area</dt><dd>{totalText(totals.squareFeet,' sq ft')}</dd></div></dl>
       </div>
       {other.length>0 && <div className="property-other-facts"><h3><ExplainedValue label="Other property information" explanation={<p>Historical sales, assessments, taxes, and HOA amounts are reference values. Editing them does not change your financial inputs.</p>} /></h3><div className="input-grid">{other.map(fact=><label className="field" key={fact.label}><span>{fact.label}</span><div className="input-wrap"><input type="text" maxLength={240} value={propertyDetailValue(data,draft,fact.label)} onChange={event=>edit(fact.label,event.target.value)} /></div></label>)}</div></div>}
-      {rent && <div className="rentcast-rent"><div><span>RentCast monthly rent estimate{rent.perUnit?' / unit':''}</span><strong>{money(rent.monthly,true)}</strong>{rent.low!==null && rent.high!==null && <small>Estimate range: {money(rent.low)}–{money(rent.high)}</small>}{rent.comparableCount>0 && <small>{rent.comparableCount} rental comparables returned</small>}</div>{!rent.perUnit && Number(currentRent)!==rent.monthly && <button type="button" className="button secondary" onClick={()=>onUseRent(String(rent.monthly))}>{rent.perUnit?'Use per-unit rent':'Use rent estimate'}</button>}</div>}
+      {rent && <div className="rentcast-rent"><div><span>{data?.source} monthly rent estimate{rent.perUnit?' / unit':''}</span><strong>{money(rent.monthly,true)}</strong>{rent.low!==null && rent.high!==null && <small>Estimate range: {money(rent.low)}–{money(rent.high)}</small>}{rent.comparableCount>0 && <small>{rent.comparableCount} rental comparables returned</small>}</div>{!rent.perUnit && Number(currentRent)!==rent.monthly && <button type="button" className="button secondary" onClick={()=>onUseRent(String(rent.monthly))}>{rent.perUnit?'Use per-unit rent':'Use rent estimate'}</button>}</div>}
       {rent && <p className="note">{rent.perUnit?'Per-unit estimate only. Apply it to reviewed units above, then use their combined rent for the property.':'Estimate for the original RentCast property configuration. Expected monthly rent remains editable in Primary Estimates.'}</p>}
       {data?.warnings.map(warning=><p className="note" key={warning}>{warning}</p>)}
       {hasEdits && <button type="button" className="text-link reset-property-details" onClick={onReset}>{data?'Reset details to RentCast':'Clear property details'} & remove additions</button>}

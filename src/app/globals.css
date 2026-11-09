@@ -218,3 +218,27 @@
 .unit-rent-total strong{font-size:18px}
 .unit-rent-total .button:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:767px){.calculator-form .field select{font-size:16px}.unit-actions>.button{width:100%}.property-unit-card{padding:16px 10px}.unit-rent-total>.button{width:100%}}
+
+.arv-estimator{margin:22px 0;border:1px solid #bacbd5;border-radius:8px;background:#f3f6f8}
+.arv-estimator>summary{padding:16px;min-height:58px;cursor:pointer;color:#385d70}
+.arv-estimator>summary small{display:block;margin:7px 0 0 16px;color:var(--muted);font-size:10px}
+.arv-estimator-body{border-top:1px solid #cbd7df;padding:0 16px 18px}
+.arv-estimator-body>.input-grid{margin-top:18px}
+.arv-comparable-input,.arv-import-file{margin-top:20px}
+.arv-estimator textarea{width:100%;min-height:100px;resize:vertical;padding:12px;border:1px solid #c2d0da;border-radius:5px;font:inherit;background:white}
+.arv-estimator .checkbox-field{font-size:12px;line-height:1.6;margin-top:12px}
+.arv-actions{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.arv-actions .button:disabled{opacity:.5;cursor:not-allowed}
+.arv-result{margin-top:20px;padding:16px;border:1px solid #c2d0da;border-radius:7px;background:white}
+.arv-value-range{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px}
+.arv-value-range span{display:block;font-size:10px;color:var(--muted)}
+.arv-value-range strong{display:block;font-size:22px;margin-top:7px;overflow-wrap:anywhere}
+.arv-result>details>summary{cursor:pointer;min-height:44px;padding:14px 0;font-size:12px}
+.arv-comp{border-top:1px solid var(--line);padding:14px 0;font-size:11px;line-height:1.8;overflow-wrap:anywhere}
+@media(max-width:767px){.arv-estimator-body{padding:0 12px 16px}.arv-estimator textarea{font-size:16px}.arv-result{padding:12px}.arv-actions>.button{width:100%}.arv-value-range{grid-template-columns:1fr}.arv-value-range>div{display:flex;align-items:center;justify-content:space-between}.arv-value-range strong{margin:0;font-size:22px}}
+
+/* Shared property feed and Scout controls. */
+.feed-filters{display:grid;grid-template-columns:2fr repeat(3,minmax(0,1fr));gap:16px}.feed-filters select,.scout-controls select{min-height:48px;width:100%;border:1px solid #d9e1d2;border-radius:5px;background:#fbfcf9;padding:10px;font-size:14px;color:var(--ink)}.feed-grid{align-items:start}.feed-card{min-width:0}.feed-card-heading{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.feed-card h3{line-height:1.5;overflow-wrap:anywhere}.feed-card .property-specs{line-height:1.8;margin:16px 0}.feed-price{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:18px 0;border-block:1px solid var(--line)}.feed-price small{display:block;font-size:10px;color:var(--muted);margin-bottom:7px}.feed-price strong{font-size:24px;font-weight:500}.feed-price .feed-recommendation{font-size:16px}.feed-metrics{margin:16px 0;display:grid;grid-template-columns:1fr 1fr;gap:16px}.feed-metrics dt{font-size:10px;color:var(--muted);margin-bottom:6px}.feed-metrics dd{margin:0;font-size:14px}.feed-card-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.feed-evidence{border-top:1px solid var(--line);margin-top:18px;padding-top:8px}.feed-evidence summary,.scout-controls summary,.scout-run-history summary{min-height:44px;padding:12px 0;cursor:pointer;font-size:12px;line-height:1.6}.feed-evidence details{border-top:1px solid var(--line)}.scout-risk-list{font-size:11px;line-height:1.8;padding-left:18px;overflow-wrap:anywhere}.scout-risk-list li+li{margin-top:8px}.scout-towns{border:1px solid var(--line);margin:18px 0;padding:15px;display:flex;gap:8px 20px;flex-wrap:wrap}.scout-towns legend{font-size:12px}.scout-towns label{font-size:12px;display:flex;gap:8px;align-items:center;min-height:40px}.scout-towns input{width:18px;height:18px}.scout-controls>.muted{font-size:12px;line-height:1.8}.scout-controls .input-grid{margin:18px 0}.scout-run-history{margin-top:24px}.scout-run-history>details{border-top:1px solid var(--line);margin-top:12px}
+@media(max-width:1000px){.feed-filters{grid-template-columns:1fr 1fr}}@media(max-width:767px){.feed-filters{grid-template-columns:1fr 1fr;gap:16px 12px}.feed-filters>.field:first-child{grid-column:1/-1}.feed-filters input,.feed-filters select,.scout-controls select{font-size:16px}.scout-controls .section-heading{align-items:flex-start;gap:12px}.scout-controls .button{min-height:48px}.feed-price strong{font-size:23px}.feed-price .feed-recommendation{font-size:15px}.feed-card-actions .button{flex:1;text-align:center}}
+.feed-card select,.feed-card textarea{width:100%;min-height:44px;border:1px solid #d9e1d2;border-radius:5px;background:#fbfcf9;padding:10px;color:var(--ink);font:inherit;font-size:14px}.feed-evidence .field{margin:14px 0}.feed-evidence .input-grid{gap:12px}.review-checkbox{display:flex;align-items:center;gap:8px;font-size:12px;min-height:44px;margin:10px 0}.review-checkbox input{width:18px;height:18px}@media(max-width:767px){.feed-card select,.feed-card textarea{font-size:16px}}
+.sheet-import-details>div{display:block}.sheet-import-details dd{max-width:none;text-align:left;white-space:pre-wrap;font-weight:400;margin-top:8px;line-height:1.8}.sheet-import-details dt{font-weight:600;color:var(--ink)}

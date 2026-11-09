@@ -1,0 +1,427 @@
+{
+  "now": "2026-04-24T12:00:00.000Z",
+  "config": {
+    "cities": [
+      "Fort Wayne"
+    ],
+    "maxEnrichments": 2,
+    "assumptions": {
+      "unexpectedConstructionCosts": 2500,
+      "holdingCosts": 1500,
+      "interestRate": 6.25,
+      "refinanceLtv": 75,
+      "loanTermYears": 30,
+      "closingCosts": 0,
+      "appraisalFee": 675,
+      "originationPercent": 1.75,
+      "closingDate": "2026-07-23",
+      "taxEscrow": 0,
+      "insuranceEscrow": 0,
+      "annualPropertyTaxes": 2000,
+      "annualInsurance": 970,
+      "managementPercent": 13,
+      "monthlyCapexReserve": 100,
+      "vacancyPercent": 0,
+      "maintenancePercent": 0
+    }
+  },
+  "listings": [
+    {
+      "provider": "Supplied",
+      "sourceId": "SYNTHETIC-scout-1",
+      "address": "100 SYNTHETIC Test Lane, Fort Wayne, IN 46802",
+      "city": "Fort Wayne",
+      "state": "IN",
+      "zip": "46802",
+      "latitude": 41.05,
+      "longitude": -85.15,
+      "propertyType": "Single Family",
+      "units": 1,
+      "bedrooms": 3,
+      "bathrooms": 1,
+      "squareFeet": 1171,
+      "lotSquareFeet": 6268,
+      "yearBuilt": 1928,
+      "price": 65000,
+      "listedAt": "2026-04-23T12:00:00.000Z",
+      "lastSeenAt": "2026-04-24T12:00:00.000Z",
+      "daysOnMarket": 1,
+      "status": "Active",
+      "checkedAt": "2026-04-24T12:00:00.000Z",
+      "url": null,
+      "description": null,
+      "photos": [],
+      "conflicts": [],
+      "sourceReference": "SYNTHETIC test input, not a real listing"
+    }
+  ],
+  "evidence": {
+    "arvInput": {
+      "valuationDate": "2026-04-24",
+      "subject": {
+        "id": "synthetic-subject",
+        "address": "100 SYNTHETIC Test Lane, Fort Wayne, IN 46802",
+        "propertyType": "Single Family",
+        "units": 1,
+        "bedrooms": 3,
+        "bathrooms": 1,
+        "glaSqFt": 1171,
+        "lotSqFt": 6268,
+        "yearBuilt": 1928,
+        "garageSpaces": 1,
+        "basementSqFt": 509,
+        "basementFinishedSqFt": 254.5,
+        "condition": "C3",
+        "quality": "Q4",
+        "floodZone": "AE",
+        "style": "Traditional",
+        "submarket": "SYNTHETIC competing market",
+        "latitude": null,
+        "longitude": null,
+        "sources": [
+          {
+            "provider": "SYNTHETIC test fixture \u2014 not real transactions",
+            "recordId": "synthetic-source",
+            "reference": "tests/fixtures/arv/synthetic-input.json",
+            "retrievedAt": "2026-04-24",
+            "reliability": 0.95,
+            "status": "verified"
+          }
+        ],
+        "evidence": {
+          "id": "verified",
+          "address": "verified",
+          "propertyType": "verified",
+          "units": "verified",
+          "bedrooms": "verified",
+          "bathrooms": "verified",
+          "glaSqFt": "verified",
+          "lotSqFt": "verified",
+          "yearBuilt": "verified",
+          "garageSpaces": "verified",
+          "basementSqFt": "verified",
+          "basementFinishedSqFt": "verified",
+          "condition": "verified",
+          "quality": "verified",
+          "floodZone": "verified",
+          "style": "verified",
+          "submarket": "verified"
+        },
+        "conflicts": []
+      },
+      "proposed": {
+        "units": 1,
+        "bedrooms": 3,
+        "bathrooms": 1,
+        "glaSqFt": 1171,
+        "garageSpaces": 1,
+        "basementSqFt": 509,
+        "basementFinishedSqFt": 254.5,
+        "condition": "C3",
+        "quality": "Q4"
+      },
+      "comparables": [
+        {
+          "id": "synthetic-comp-0",
+          "address": "SYNTHETIC Comparable 0, Fort Wayne, IN",
+          "propertyType": "Single Family",
+          "units": 1,
+          "bedrooms": 3,
+          "bathrooms": 1,
+          "glaSqFt": 1171,
+          "lotSqFt": 6268,
+          "yearBuilt": 1928,
+          "garageSpaces": 1,
+          "basementSqFt": 509,
+          "basementFinishedSqFt": 254.5,
+          "condition": "C3",
+          "quality": "Q4",
+          "floodZone": "AE",
+          "style": "Traditional",
+          "submarket": "SYNTHETIC competing market",
+          "latitude": null,
+          "longitude": null,
+          "sources": [
+            {
+              "provider": "SYNTHETIC test fixture \u2014 not real transactions",
+              "recordId": "synthetic-source",
+              "reference": "tests/fixtures/arv/synthetic-input.json",
+              "retrievedAt": "2026-04-24",
+              "reliability": 0.95,
+              "status": "verified"
+            }
+          ],
+          "evidence": {
+            "id": "verified",
+            "address": "verified",
+            "propertyType": "verified",
+            "units": "verified",
+            "bedrooms": "verified",
+            "bathrooms": "verified",
+            "glaSqFt": "verified",
+            "lotSqFt": "verified",
+            "yearBuilt": "verified",
+            "garageSpaces": "verified",
+            "basementSqFt": "verified",
+            "basementFinishedSqFt": "verified",
+            "condition": "verified",
+            "quality": "verified",
+            "floodZone": "verified",
+            "style": "verified",
+            "submarket": "verified"
+          },
+          "conflicts": [],
+          "distanceMiles": 0.15,
+          "competingMarketEvidence": null,
+          "conditionAssessment": "verified",
+          "sale": {
+            "status": "closed",
+            "price": 148000,
+            "date": "2026-02-10",
+            "armsLength": true,
+            "source": {
+              "provider": "SYNTHETIC test fixture \u2014 not real transactions",
+              "recordId": "synthetic-sale-0",
+              "reference": "tests/fixtures/arv/synthetic-input.json",
+              "retrievedAt": "2026-04-24",
+              "reliability": 0.95,
+              "status": "verified"
+            }
+          }
+        },
+        {
+          "id": "synthetic-comp-1",
+          "address": "SYNTHETIC Comparable 1, Fort Wayne, IN",
+          "propertyType": "Single Family",
+          "units": 1,
+          "bedrooms": 3,
+          "bathrooms": 1,
+          "glaSqFt": 1171,
+          "lotSqFt": 6268,
+          "yearBuilt": 1928,
+          "garageSpaces": 1,
+          "basementSqFt": 509,
+          "basementFinishedSqFt": 254.5,
+          "condition": "C3",
+          "quality": "Q4",
+          "floodZone": "AE",
+          "style": "Traditional",
+          "submarket": "SYNTHETIC competing market",
+          "latitude": null,
+          "longitude": null,
+          "sources": [
+            {
+              "provider": "SYNTHETIC test fixture \u2014 not real transactions",
+              "recordId": "synthetic-source",
+              "reference": "tests/fixtures/arv/synthetic-input.json",
+              "retrievedAt": "2026-04-24",
+              "reliability": 0.95,
+              "status": "verified"
+            }
+          ],
+          "evidence": {
+            "id": "verified",
+            "address": "verified",
+            "propertyType": "verified",
+            "units": "verified",
+            "bedrooms": "verified",
+            "bathrooms": "verified",
+            "glaSqFt": "verified",
+            "lotSqFt": "verified",
+            "yearBuilt": "verified",
+            "garageSpaces": "verified",
+            "basementSqFt": "verified",
+            "basementFinishedSqFt": "verified",
+            "condition": "verified",
+            "quality": "verified",
+            "floodZone": "verified",
+            "style": "verified",
+            "submarket": "verified"
+          },
+          "conflicts": [],
+          "distanceMiles": 0.22999999999999998,
+          "competingMarketEvidence": null,
+          "conditionAssessment": "verified",
+          "sale": {
+            "status": "closed",
+            "price": 150000,
+            "date": "2026-02-11",
+            "armsLength": true,
+            "source": {
+              "provider": "SYNTHETIC test fixture \u2014 not real transactions",
+              "recordId": "synthetic-sale-1",
+              "reference": "tests/fixtures/arv/synthetic-input.json",
+              "retrievedAt": "2026-04-24",
+              "reliability": 0.95,
+              "status": "verified"
+            }
+          }
+        },
+        {
+          "id": "synthetic-comp-2",
+          "address": "SYNTHETIC Comparable 2, Fort Wayne, IN",
+          "propertyType": "Single Family",
+          "units": 1,
+          "bedrooms": 3,
+          "bathrooms": 1,
+          "glaSqFt": 1171,
+          "lotSqFt": 6268,
+          "yearBuilt": 1928,
+          "garageSpaces": 1,
+          "basementSqFt": 509,
+          "basementFinishedSqFt": 254.5,
+          "condition": "C3",
+          "quality": "Q4",
+          "floodZone": "AE",
+          "style": "Traditional",
+          "submarket": "SYNTHETIC competing market",
+          "latitude": null,
+          "longitude": null,
+          "sources": [
+            {
+              "provider": "SYNTHETIC test fixture \u2014 not real transactions",
+              "recordId": "synthetic-source",
+              "reference": "tests/fixtures/arv/synthetic-input.json",
+              "retrievedAt": "2026-04-24",
+              "reliability": 0.95,
+              "status": "verified"
+            }
+          ],
+          "evidence": {
+            "id": "verified",
+            "address": "verified",
+            "propertyType": "verified",
+            "units": "verified",
+            "bedrooms": "verified",
+            "bathrooms": "verified",
+            "glaSqFt": "verified",
+            "lotSqFt": "verified",
+            "yearBuilt": "verified",
+            "garageSpaces": "verified",
+            "basementSqFt": "verified",
+            "basementFinishedSqFt": "verified",
+            "condition": "verified",
+            "quality": "verified",
+            "floodZone": "verified",
+            "style": "verified",
+            "submarket": "verified"
+          },
+          "conflicts": [],
+          "distanceMiles": 0.31,
+          "competingMarketEvidence": null,
+          "conditionAssessment": "verified",
+          "sale": {
+            "status": "closed",
+            "price": 154000,
+            "date": "2026-03-12",
+            "armsLength": true,
+            "source": {
+              "provider": "SYNTHETIC test fixture \u2014 not real transactions",
+              "recordId": "synthetic-sale-2",
+              "reference": "tests/fixtures/arv/synthetic-input.json",
+              "retrievedAt": "2026-04-24",
+              "reliability": 0.95,
+              "status": "verified"
+            }
+          }
+        },
+        {
+          "id": "synthetic-comp-3",
+          "address": "SYNTHETIC Comparable 3, Fort Wayne, IN",
+          "propertyType": "Single Family",
+          "units": 1,
+          "bedrooms": 3,
+          "bathrooms": 1,
+          "glaSqFt": 1171,
+          "lotSqFt": 6268,
+          "yearBuilt": 1928,
+          "garageSpaces": 1,
+          "basementSqFt": 509,
+          "basementFinishedSqFt": 254.5,
+          "condition": "C3",
+          "quality": "Q4",
+          "floodZone": "AE",
+          "style": "Traditional",
+          "submarket": "SYNTHETIC competing market",
+          "latitude": null,
+          "longitude": null,
+          "sources": [
+            {
+              "provider": "SYNTHETIC test fixture \u2014 not real transactions",
+              "recordId": "synthetic-source",
+              "reference": "tests/fixtures/arv/synthetic-input.json",
+              "retrievedAt": "2026-04-24",
+              "reliability": 0.95,
+              "status": "verified"
+            }
+          ],
+          "evidence": {
+            "id": "verified",
+            "address": "verified",
+            "propertyType": "verified",
+            "units": "verified",
+            "bedrooms": "verified",
+            "bathrooms": "verified",
+            "glaSqFt": "verified",
+            "lotSqFt": "verified",
+            "yearBuilt": "verified",
+            "garageSpaces": "verified",
+            "basementSqFt": "verified",
+            "basementFinishedSqFt": "verified",
+            "condition": "verified",
+            "quality": "verified",
+            "floodZone": "verified",
+            "style": "verified",
+            "submarket": "verified"
+          },
+          "conflicts": [],
+          "distanceMiles": 0.39,
+          "competingMarketEvidence": null,
+          "conditionAssessment": "verified",
+          "sale": {
+            "status": "closed",
+            "price": 153000,
+            "date": "2026-03-13",
+            "armsLength": true,
+            "source": {
+              "provider": "SYNTHETIC test fixture \u2014 not real transactions",
+              "recordId": "synthetic-sale-3",
+              "reference": "tests/fixtures/arv/synthetic-input.json",
+              "retrievedAt": "2026-04-24",
+              "reliability": 0.95,
+              "status": "verified"
+            }
+          }
+        }
+      ],
+      "scenarioName": "SYNTHETIC offline demonstration \u2014 not real sales"
+    },
+    "rehab": {
+      "low": 25000,
+      "base": 35000,
+      "high": 50000,
+      "scope": "SYNTHETIC full investor-grade kitchen, bath, flooring and paint; systems require inspection.",
+      "source": "SYNTHETIC cost fixture, not a contractor quote",
+      "asOf": "2026-04-24",
+      "photoReviewed": false
+    },
+    "lookup": {
+      "source": "RentCast",
+      "address": "100 SYNTHETIC Test Lane, Fort Wayne, IN 46802",
+      "fetchedAt": "2026-04-24T12:00:00.000Z",
+      "facts": [],
+      "rent": {
+        "monthly": 1800,
+        "low": 1600,
+        "high": 1900,
+        "perUnit": false,
+        "comparableCount": 4
+      },
+      "warnings": [
+        "SYNTHETIC fixture \u2014 not a provider response"
+      ]
+    },
+    "thesis": "SYNTHETIC negotiation and renovation scenario",
+    "thesisSource": "SYNTHETIC evidence"
+  }
+}
