@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { propertyAddedDate,isUnseenProperty } from '../src/lib/deals/feed-presentation.ts';
+import { propertyAddedDate,isUnseenProperty,isNewProperty,isOlderProperty } from '../src/lib/deals/feed-presentation.ts';
 import { listingPhotoUrl } from '../src/lib/deals/listing-photo.ts';
 import { normalizeSheet } from '../src/lib/sheets/import.ts';
 import type { SheetGrid } from '../src/lib/sheets/client.ts';
@@ -28,4 +28,23 @@ test('optional sheet Photo URL/hyperlink is imported without a photo lookup or i
   const row=normalizeSheet(grid).rows[0];assert.equal(row.listing.photos.length,1);assert.equal(row.listing.photos[0].url,'https://photos.zillowstatic.com/fp/synthetic-example.jpg');assert.equal(row.listing.photos[0].licensed,false);assert.equal(row.listing.photos[0].source,'SYNTHETIC listing agent');
   grid.hyperlinks={};grid.values[1][4]='javascript:alert(1)';assert.equal(normalizeSheet(grid).rows[0].listing.photos.length,0);
   grid.values[1][4]='';assert.equal(normalizeSheet(grid).rows[0].listing.photos.length,0);
+});
+
+test('New lasts seven Eastern calendar days even after a view; manual marking restarts the week',()=>{
+  const now='2026-11-09T14:00:00Z';
+  assert.equal(isNewProperty({addedDate:'2026-11-03'},now),true);
+  assert.equal(isNewProperty({addedDate:'2026-11-02'},now),false);
+  assert.equal(isNewProperty({addedDate:'2026-11-10'},now),false);
+  assert.equal(isNewProperty({addedDate:null},now),false);
+  assert.equal(isNewProperty({addedDate:'2026-01-01',newMarkedAt:'2026-11-09T14:00:00Z'},now),true);
+  assert.equal(isNewProperty({newMarkedAt:'2026-11-02T14:00:00Z'},now),false);
+  assert.equal(isNewProperty({addedDate:'2026-11-03'},'2026-11-10T04:59:59Z'),true);
+});
+test('older properties use a calendar month with month-end clamping; missing dates stay visible',()=>{
+  assert.equal(isOlderProperty('2026-10-08','2026-11-09T14:00:00Z'),true);
+  assert.equal(isOlderProperty('2026-10-09','2026-11-09T14:00:00Z'),false);
+  assert.equal(isOlderProperty('2026-02-28','2026-03-31T14:00:00Z'),false);
+  assert.equal(isOlderProperty('2026-02-27','2026-03-31T14:00:00Z'),true);
+  assert.equal(isOlderProperty('2026-01-01','2026-11-09T14:00:00Z'),true);
+  assert.equal(isOlderProperty(null,'2026-11-09T14:00:00Z'),false);
 });

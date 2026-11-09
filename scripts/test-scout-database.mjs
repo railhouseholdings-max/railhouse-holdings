@@ -25,6 +25,8 @@ await db.exec(await readFile(root+'supabase/migrations/202611090003_property_fee
 // PGlite models the managed Storage schema/policies; HTTP tests separately exercise byte upload/download.
 await db.exec(`create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);alter table storage.objects enable row level security;grant usage on schema storage to authenticated,service_role;grant select,insert,update,delete on storage.objects to authenticated;grant all on storage.buckets,storage.objects to service_role;`);
 await db.exec(await readFile(root+'supabase/migrations/202611090004_property_photo_storage.sql','utf8'));
+await db.exec(await readFile(root+'supabase/migrations/202611090005_feed_presentation.sql','utf8'));
+await db.exec(await readFile(root+'supabase/migrations/202611090006_property_ownership.sql','utf8'));
 console.log('Workspace, Scout, Google Sheets, read-marker and private-photo-storage migrations executed; legacy analysis backfilled.');
 await db.exec(`set role authenticated;set request.jwt.claim.sub='11111111-1111-4111-8111-111111111111';`);
 const keys=(await db.query(`select private.property_key('2221 Eby Avenue, Fort Wayne, IN 46802') a,private.property_key('2221 Eby Ave, Fort Wayne, IN') b`)).rows[0];assert.equal(keys.a,keys.b);
@@ -34,6 +36,7 @@ assert.equal((await db.query('select count(*)::int n from public.deals')).rows[0
 console.log('New and legacy analyses share one property; history preserved.');
 await db.query('update public.properties set first_viewed_at=$1 where id=$2 and first_viewed_at is null',['2026-11-09T10:00:00Z',saved.property_id]);
 await db.query('update public.properties set first_viewed_at=$1 where id=$2 and first_viewed_at is null',['2026-11-09T11:00:00Z',saved.property_id]);
+await db.query('update public.properties set new_marked_at=$1 where id=$2',['2026-11-09T14:00:00Z',saved.property_id]);
 const firstViewed=(await db.query('select first_viewed_at from public.properties where id=$1',[saved.property_id])).rows[0].first_viewed_at;
 assert.equal(new Date(firstViewed).toISOString(),'2026-11-09T10:00:00.000Z');
 await db.query('insert into public.scout_settings(owner_id,config) values($1,$2)', ['11111111-1111-4111-8111-111111111111',{monthlyRequestLimit:2,maxRequestsPerRun:1}]);
@@ -48,6 +51,10 @@ const listing={address:'2221 Eby Avenue, Fort Wayne, IN',status:'Active',price:9
 await db.query('select public.scout_save_listing($1,$2,$3)',[first.id,listing,{stage:'enriched',recommendation:'Needs Review'}]);
 await db.query('select public.scout_save_listing($1,$2,$3)',[first.id,listing,{stage:'enriched',recommendation:'Needs Review'}]);
 let props=(await db.query('select * from public.properties')).rows;if(props.length!==1)throw new Error('Duplicate canonical property');if(props[0].property_details.draft.overrides.Bedrooms!=='4')throw new Error('Manual details overwritten');assert.equal(new Date(props[0].first_viewed_at).toISOString(),new Date(firstViewed).toISOString());
+assert.equal(new Date(props[0].added_date_override).toISOString().slice(0,10),'2026-01-01');
+assert.equal(new Date(props[0].new_marked_at).toISOString(),'2026-11-09T14:00:00.000Z');
+assert.equal(props[0].lifecycle,'owned');
+assert.equal(props[0].ownership.source,'owner-confirmed');
 assert.equal(props[0].manual_review.notes,'SYNTHETIC manual note: preserve');
 assert.equal((await db.query('select count(*)::int n from public.property_scout_evaluations')).rows[0].n,1);
 let history=(await db.query('select * from public.property_listing_history')).rows;if(history.length!==1)throw new Error('Duplicate status history');
@@ -74,10 +81,31 @@ assert.equal((await db.query("select public from storage.buckets where id='railh
 await db.exec(`set role authenticated;set request.jwt.claim.sub='11111111-1111-4111-8111-111111111111';`);
 assert.equal((await db.query('select count(*)::int n from storage.objects')).rows[0].n,1);
 await assert.rejects(()=>db.query("insert into storage.objects(bucket_id,name) values('railhouse-property-photos','unauthorized-upload')"),/row-level security/);
+// Purchase a supplied analysis without a duplicate property or fabricated operating records.
+const beforePurchase=(await db.query('select count(*)::int n from public.properties')).rows[0].n;
+const purchaseDeal=(await db.query('select public.save_deal($1,$2,$3,$4,$5) result',['44444444-4444-4444-8444-444444444444',null,{...rows.deal,address:queueListing.address},rows.adjustments,rows.taxes])).rows[0].result;
+await assert.rejects(()=>db.query('select public.purchase_deal($1,$2,$3,$4)',[purchaseDeal.id,999,47000,'2026-01-01']),/another session/);
+const purchased=(await db.query('select public.purchase_deal($1,$2,$3,$4) result',[purchaseDeal.id,purchaseDeal.revision,47000,'2026-01-01'])).rows[0].result;
+assert.equal(purchased.propertyId,promoted.id);
+const ownedBefore=(await db.query('select lifecycle,ownership from public.properties where id=$1',[promoted.id])).rows[0];
+assert.equal(ownedBefore.lifecycle,'owned');assert.equal(ownedBefore.ownership.purchasePrice,47000);
+await db.query('select public.purchase_deal($1,$2,$3,$4)',[purchaseDeal.id,purchaseDeal.revision,99999,'2026-01-02']);
+assert.deepEqual((await db.query('select ownership from public.properties where id=$1',[promoted.id])).rows[0].ownership,ownedBefore.ownership);
+assert.equal((await db.query('select count(*)::int n from public.properties')).rows[0].n,beforePurchase);
+assert.equal((await db.query('select count(*)::int n from public.property_financials where property_id=$1',[promoted.id])).rows[0].n,0);
+await db.exec('set role service_role;');
+const ownedImport=(await db.query("select public.scout_begin('SYNTHETIC-after-purchase') r")).rows[0].r;
+await db.query('select public.scout_save_listing($1,$2,$3)',[ownedImport.id,{...queueListing,price:46000,status:'Sold'},null]);
+assert.deepEqual((await db.query('select lifecycle,ownership from public.properties where id=$1',[promoted.id])).rows[0],ownedBefore);
+await db.query('select public.scout_finish($1,$2,$3)',[ownedImport.id,{status:'succeeded'},new Date().toISOString()]);
+await db.exec('set role authenticated;');
+console.log('Eby ownership, purchase deduplication, stale revisions, idempotent retries and import preservation verified.');
 await db.exec(`set request.jwt.claim.sub='33333333-3333-4333-8333-333333333333';`);
 assert.equal((await db.query('select count(*)::int n from storage.objects')).rows[0].n,0);
+await assert.rejects(()=>db.query('select public.purchase_deal($1,$2,$3,$4)',[purchaseDeal.id,purchaseDeal.revision,47000,'2026-01-01']),/Owner access required/);
 console.log('Private image bucket and owner-only Storage read policy verified.');
 await db.exec('set role anon;');
 try{await db.query("select public.scout_begin('unauthorized')");throw new Error('Anonymous Scout mutation allowed');}catch(e){if(!String(e).includes('permission denied'))throw e;}
-console.log('Anonymous Scout execution denied.');
+await assert.rejects(()=>db.query('select public.purchase_deal($1,$2,$3,$4)',[purchaseDeal.id,purchaseDeal.revision,47000,'2026-01-01']),/permission denied/);
+console.log('Anonymous Scout and purchase execution denied.');
 await db.close();

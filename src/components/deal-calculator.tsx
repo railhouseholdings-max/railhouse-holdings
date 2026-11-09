@@ -11,6 +11,7 @@ import { calculateDeal } from "@/lib/calculations/deal";
 import { money, percent } from "@/lib/format";
 import { DetailRows } from "./ui";
 import { ArvEstimator } from "./arv-estimator";
+import { PurchaseDeal } from './purchase-deal';
 import { ShareDealButton } from "./share-deal-button";
 import { PurchasePriceExplorer } from "./purchase-price-explorer";
 import { targetPurchasePrice } from "@/lib/calculations/target-purchase-price";
@@ -189,7 +190,7 @@ export function DealCalculator({ initialDeal, initialProperty, asOfDate, cloudEn
     setSaveMessage("");
     setIsEdited(true);
   };
-  const saveDeal = async () => {
+  const saveDeal = async ():Promise<{id:string;revision:number}|undefined> => {
     if (!calculatedInput || !result || saveInFlight.current) return;
     saveInFlight.current=true;
     const payload: SaveDealRequest = {propertyDetails:{draft:propertyDraft,lookup:propertyLookup.state?.address===address.trim()?propertyLookup.state.data:undefined},expectedPropertyRevision:propertyRevision,id:savedRecord?.id ?? null,expectedRevision:savedRecord?.revision ?? null,address,status:initialDeal?.status ?? "Reviewing",inputs:calculatedInput,closingAdjustments,purchaseAdjustments,
@@ -202,7 +203,8 @@ export function DealCalculator({ initialDeal, initialProperty, asOfDate, cloudEn
       setSavedRecord({id:data.id,revision:data.revision});
       if(data.property_revision!==undefined)setPropertyRevision(data.property_revision);
       router.refresh();
-      setSaveMessage(`Saved revision ${data.revision}. New edits require another save. Shared property details and analysis are now in your property feed.`);
+      setSaveMessage(`Saved revision ${data.revision}. New edits require another save. Shared property details and analysis are saved.`);
+      return {id:data.id,revision:data.revision};
     } catch(error) {setSaveMessage(error instanceof Error ? error.message : "Save failed. Your inputs remain in this tab.");}
     finally {saveInFlight.current=false;setSaving(false);}
   };
@@ -306,7 +308,8 @@ export function DealCalculator({ initialDeal, initialProperty, asOfDate, cloudEn
               <h3 id="detailed-results-heading">Calculated results</h3>
               <DealStrengthDetails result={result} arv={Number(fields.arv)} monthlyRent={Number(fields.monthlyRent)} />
             <div className="capital-summary"><div><span>{explained("Cash left in the deal", "cashRemainingInDeal")}</span><strong>{money(result.cashRemainingInDeal, true)}</strong></div><div><span>{explained("Capital recovered", "recoveryPercent")}</span><strong>{percent(result.recoveryPercent)}</strong></div></div>
-            {cloudEnabled && <div className="save-deal-controls"><button className="button" type="button" disabled={saving} onClick={saveDeal}>{saving ? "Saving…" : savedRecord ? "Update saved deal" : "Save deal"}</button><p className="note" role="status">{saveMessage || "Calculating saves this analysis and shared property details to your feed. Save again after making changes."}</p></div>}
+            {cloudEnabled && <div className="save-deal-controls"><button className="button" type="button" disabled={saving} onClick={()=>void saveDeal()}>{saving ? "Saving…" : savedRecord ? "Update saved deal" : "Save deal"}</button><p className="note" role="status">{saveMessage || "Calculating saves this analysis and shared property details to your feed. Save again after making changes."}</p></div>}
+            {cloudEnabled&&<PurchaseDeal key={address} save={saveDeal} price={Number(fields.purchasePrice)} today={asOfDate} disabled={saving} owned={initialProperty?.lifecycle==='owned'}/>}
             {result.cashRemainingInDeal < 0 && <p className="note">Negative cash left means refinance proceeds exceed the modeled project cost.</p>}
             <h3 className="breakdown-title">Refinance & cash returned</h3>
             <DetailRows rows={[

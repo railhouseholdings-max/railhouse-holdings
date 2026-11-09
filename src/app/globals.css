@@ -246,3 +246,20 @@
 /* Stable added dates and persistent unread state sit above listing images/details. */
 .feed-card-date{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:16px;margin-bottom:17px;border-bottom:1px solid var(--line)}.feed-card-date>div:first-child{min-width:0}.feed-card-date>div>span{display:block;font-size:10px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}.feed-card-date time,.feed-card-date>div>strong{font-size:20px;font-weight:650;color:var(--ink);line-height:1.35}.feed-unread-controls{display:flex;align-items:center;gap:5px 12px;flex-wrap:wrap;justify-content:flex-end}.feed-new-badge{display:inline-flex;align-items:center;gap:6px;border-radius:20px;background:#275e3c;color:white;padding:7px 12px;font-size:12px;line-height:1;font-weight:650;letter-spacing:.2px}.feed-new-badge:before{content:"";width:6px;height:6px;border-radius:50%;background:#d7ed8d}.feed-unread-controls .text-link{min-height:44px;font-size:11px}.feed-card-new{border-color:#8ba769;box-shadow:inset 0 4px 0 #668a41}.listing-photo{margin:0 0 18px;border-radius:7px;overflow:hidden;background:#eef1e8}.listing-photo img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:cover}.listing-photo figcaption{padding:8px 10px;font-size:9px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}.listing-photo-unavailable{margin:0 0 18px}.feed-research-queue summary{cursor:pointer;min-height:44px;padding:10px 0}
 @media(max-width:767px){.feed-card-date time,.feed-card-date>div>strong{font-size:19px}.feed-card-date{gap:10px}.feed-unread-controls{max-width:120px;gap:0;flex-direction:column;align-items:flex-end}.listing-photo img{aspect-ratio:16/10}}
+
+/* Feed age and availability cues remain distinct from investment recommendations. */
+.feed-card-date .feed-new-badge{color:#fff;background:#275e3c;font-size:12px}
+.feed-card.feed-card-sold{border:2px solid #b42332;box-shadow:inset 0 4px 0 #b42332}
+.feed-card-heading .feed-sold-badge{border:2px solid #b42332;border-radius:999px;color:#9f1726;background:#fff0f1;padding:6px 14px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}
+.feed-older-properties{margin-top:24px}
+.feed-older-properties>summary{cursor:pointer;padding:10px 0;min-height:44px;font-weight:650}
+.feed-older-properties>summary .note{display:block;margin:6px 0 0;font-weight:400}
+.feed-older-properties[open]>.property-grid{margin-top:18px}
+
+.property-tabs{display:flex;gap:6px;padding:5px;background:#e9eee3;border:1px solid var(--line);border-radius:10px;margin:0 0 28px;width:fit-content;max-width:100%}
+.property-tabs a{display:flex;align-items:center;justify-content:center;min-height:46px;padding:11px 22px;border-radius:7px;color:var(--ink);font-size:13px;font-weight:600;text-decoration:none}
+.property-tabs a.active{background:#275e3c;color:#fff;box-shadow:0 2px 5px #17342118}
+.property-tabs a:focus-visible{outline:2px solid #275e3c;outline-offset:2px}
+.purchase-deal{margin-top:22px;padding-top:22px;border-top:1px solid var(--line)}
+.purchase-deal>.input-grid{margin-top:18px}
+@media(max-width:600px){.property-tabs{width:100%}.property-tabs a{flex:1;padding:11px 12px}.purchase-deal .feed-card-actions .button{width:100%;white-space:normal}}

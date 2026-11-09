@@ -1,12 +1,20 @@
 import Link from 'next/link';
-import { AnalyzeButton,PageHeader } from '@/components/ui';
+import { PageHeader } from '@/components/ui';
 import { PropertyFeed } from '@/components/scout/property-feed';
-import { ScoutSettings } from '@/components/scout/settings';
-import { listPropertyFeed,scoutDashboard } from '@/lib/data/property-feed';
+import { listPropertyFeed } from '@/lib/data/property-feed';
 import { dataMode } from '@/lib/config/cloud';
-import type { ScoutRun } from '@/domain/scout';
+
 export const metadata={title:'Property Feed'};
-export default async function Properties() {
-  const [properties,scout]=await Promise.all([listPropertyFeed(),scoutDashboard()]);
-  return <><PageHeader eyebrow="RAILHOUSE OPPORTUNITIES" title="Property feed" description="Your deal analyses and agent’s Google Sheet, together." action={<AnalyzeButton/>}/>{dataMode()==='demo'&&<p className="notice">Fictional demo records. Scout and saving are disabled until private cloud storage is configured.</p>}<ScoutSettings initial={scout.config} enabled={dataMode()==='supabase'}/><PropertyFeed properties={properties}/><section className="panel scout-run-history"><h2>Import activity</h2>{!scout.runs.length&&<p className="note">No imports yet. Daily and manual sheet imports will appear here.</p>}{scout.runs.map(r=>{const summary=r.summary as Partial<ScoutRun>;return <details key={String(r.id)}><summary>{new Date(String(r.started_at)).toLocaleString('en-US',{timeZone:'America/New_York'})} ET · {String(r.status)} · {Number(r.requests)} source/storage requests</summary><p className="note">Run {String(r.id)}</p><ul className="scout-risk-list">{(summary.report??summary.errors??[]).map((line,i)=><li key={i}>{line}</li>)}</ul></details>;})}<details><summary>Recent listing changes</summary>{!scout.changes.length&&<p className="note">No recorded listing changes.</p>}{scout.changes.map(change=>{const observation=change.observation as {address:string;status:string;price:number|null};return <p className="note" key={String(change.id)}><Link href={`/analyze?property=${change.property_id}`}>{observation.address}</Link> · {observation.status} · {observation.price?.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0})??'Price unknown'} · {new Date(String(change.recorded_at)).toLocaleDateString('en-US')}</p>;})}</details></section></>;
+export default async function Properties({searchParams}:{searchParams:Promise<{tab?:string}>}) {
+  const mine=(await searchParams).tab==='mine';
+  const properties=await listPropertyFeed();
+  return <>
+    <nav className="property-tabs" aria-label="Property views">
+      <Link href="/properties" className={!mine?'active':''} aria-current={!mine?'page':undefined}>Property Feed</Link>
+      <Link href="/properties?tab=mine" className={mine?'active':''} aria-current={mine?'page':undefined}>My Properties</Link>
+    </nav>
+    <PageHeader eyebrow={mine?'RAILHOUSE PORTFOLIO':'RAILHOUSE OPPORTUNITIES'} title={mine?'My properties':'Property feed'} description={mine?'The properties you own, with their details and saved analyses.':'Your properties and latest opportunities, newest first.'}/>
+    {dataMode()==='demo'&&<p className="notice">Fictional demo records. Saving is disabled until private cloud storage is configured.</p>}
+    <PropertyFeed key={mine?'mine':'feed'} properties={properties.filter(p=>mine?p.lifecycle==='owned':p.lifecycle!=='owned')} now={new Date().toISOString()} owned={mine}/>
+  </>;
 }

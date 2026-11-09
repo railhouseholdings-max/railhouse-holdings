@@ -1,3 +1,4 @@
+import { validatePurchase } from '@/lib/persistence/property-ownership';
 import { randomUUID } from 'node:crypto';
 import { cloudConfig, dataMode } from '@/lib/config/cloud';
 import { ownerSession } from '@/lib/cloud/session';
@@ -16,7 +17,14 @@ export async function POST(request: Request) {
   try {
     const raw=await request.text();
     if (raw.length>32000) return Response.json({error:'Deal is too large.'},{status:413,headers});
-    validated=validateSaveDeal(JSON.parse(raw));
+    const body=JSON.parse(raw);
+    if(body.operation==='purchase'){
+      const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+      const purchase=validatePurchase(body,today);
+      const saved=await restRequest(config,session,'rpc/purchase_deal',{method:'POST',body:JSON.stringify({p_deal:purchase.dealId,p_revision:purchase.revision,p_price:purchase.purchasePrice,p_date:purchase.purchaseDate})});
+      return Response.json(saved,{headers});
+    }
+    validated=validateSaveDeal(body);
     // Recompute county taxes from trusted server data. Never accept client outputs as authoritative.
     const match=lookupRentalSnapshot({address:validated.address,parcelId:validated.taxAssumptions.parcelId});
     const county=estimateCountyRentalTaxes(match.status==='found'?match.parcel:null,match.status==='found'?match.metadata:null,validated.inputs.monthlyRent,validated.taxAssumptions.payableYear);

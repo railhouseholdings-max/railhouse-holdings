@@ -42,6 +42,13 @@ export async function POST(request:Request) {
   try {
     const raw=await request.text();if(raw.length>16000)return Response.json({error:'Request too large.'},{status:413,headers});
     const body=JSON.parse(raw);
+    if(body.operation==='mark-new'){
+      if(!UUID_PATTERN.test(body.propertyId))throw new Error('Invalid property ID.');
+      const newMarkedAt=new Date().toISOString();
+      const saved=await restRequest<unknown[]>(config,session,`properties?id=eq.${body.propertyId}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({new_marked_at:newMarkedAt})});
+      if(!saved.length)return Response.json({error:'Property not found.'},{status:404,headers});
+      return Response.json({newMarkedAt},{headers});
+    }
     if(body.operation==='view'){
       if(!UUID_PATTERN.test(body.propertyId))throw new Error('Invalid property ID.');
       await restRequest(config,session,`properties?id=eq.${body.propertyId}&first_viewed_at=is.null`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({first_viewed_at:new Date().toISOString()})});
